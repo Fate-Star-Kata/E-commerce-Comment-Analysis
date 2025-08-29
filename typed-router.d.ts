@@ -23,12 +23,15 @@ declare module 'vue-router/auto-routes' {
     '/admin/ai/': RouteRecordInfo<'/admin/ai/', '/admin/ai', Record<never, never>, Record<never, never>>,
     '/admin/Content/': RouteRecordInfo<'/admin/Content/', '/admin/Content', Record<never, never>, Record<never, never>>,
     '/admin/dashboard/': RouteRecordInfo<'/admin/dashboard/', '/admin/dashboard', Record<never, never>, Record<never, never>>,
+    '/admin/dataManage/': RouteRecordInfo<'/admin/dataManage/', '/admin/dataManage', Record<never, never>, Record<never, never>>,
     '/admin/files/': RouteRecordInfo<'/admin/files/', '/admin/files', Record<never, never>, Record<never, never>>,
+    '/admin/historyManage/': RouteRecordInfo<'/admin/historyManage/', '/admin/historyManage', Record<never, never>, Record<never, never>>,
     '/admin/knowledge/': RouteRecordInfo<'/admin/knowledge/', '/admin/knowledge', Record<never, never>, Record<never, never>>,
     '/admin/log/': RouteRecordInfo<'/admin/log/', '/admin/log', Record<never, never>, Record<never, never>>,
     '/admin/notice/': RouteRecordInfo<'/admin/notice/', '/admin/notice', Record<never, never>, Record<never, never>>,
     '/admin/profile/': RouteRecordInfo<'/admin/profile/', '/admin/profile', Record<never, never>, Record<never, never>>,
     '/admin/settings/': RouteRecordInfo<'/admin/settings/', '/admin/settings', Record<never, never>, Record<never, never>>,
+    '/admin/statisticsManage/': RouteRecordInfo<'/admin/statisticsManage/', '/admin/statisticsManage', Record<never, never>, Record<never, never>>,
     '/admin/systemConfig/': RouteRecordInfo<'/admin/systemConfig/', '/admin/systemConfig', Record<never, never>, Record<never, never>>,
     '/admin/SystemMonitoring/': RouteRecordInfo<'/admin/SystemMonitoring/', '/admin/SystemMonitoring', Record<never, never>, Record<never, never>>,
     '/admin/userManage/': RouteRecordInfo<'/admin/userManage/', '/admin/userManage', Record<never, never>, Record<never, never>>,
@@ -81,8 +84,16 @@ declare module 'vue-router/auto-routes' {
       routes: '/admin/dashboard/'
       views: never
     }
+    'src/pages/admin/dataManage/index.vue': {
+      routes: '/admin/dataManage/'
+      views: never
+    }
     'src/pages/admin/files/index.vue': {
       routes: '/admin/files/'
+      views: never
+    }
+    'src/pages/admin/historyManage/index.vue': {
+      routes: '/admin/historyManage/'
       views: never
     }
     'src/pages/admin/knowledge/index.vue': {
@@ -103,6 +114,10 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/admin/settings/index.vue': {
       routes: '/admin/settings/'
+      views: never
+    }
+    'src/pages/admin/statisticsManage/index.vue': {
+      routes: '/admin/statisticsManage/'
       views: never
     }
     'src/pages/admin/systemConfig/index.vue': {

@@ -124,21 +124,21 @@ export const adminMenuItems: AdminHeader[] = [
     children: [
       {
         id: "1-1-1",
-        title: "分析统计",
+        title: "数据统计",
         icon: "DataAnalysis",
-        path: "/admin/sentiment/stats",
+        path: "/admin/statisticsManage",
       },
       {
         id: "1-1-2",
-        title: "模型管理",
-        icon: "Setting",
-        path: "/admin/sentiment/models",
+        title: "数据管理",
+        icon: "Document",
+        path: "/admin/dataManage",
       },
       {
         id: "1-1-3",
-        title: "分析记录",
-        icon: "Document",
-        path: "/admin/sentiment/records",
+        title: "历史记录",
+        icon: "Clock",
+        path: "/admin/historyManage",
       }
     ]
   },

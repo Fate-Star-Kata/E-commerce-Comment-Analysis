@@ -79,3 +79,109 @@ export interface PaginationConfig {
   showTotal: (total: number) => string
   onChange: (current: number, size: number) => void
 }
+
+// 数据管理相关类型
+export interface DataRecord {
+  id: number
+  content: string
+  sentiment: 'positive' | 'negative' | 'neutral'
+  confidence: number
+  user_id: number
+  created_at: string
+  source: 'file' | 'api'
+}
+
+export interface DataQueryParams {
+  query?: string
+  sentiment?: string
+  source?: string
+  start_date?: string
+  end_date?: string
+  page: number
+  page_size: number
+}
+
+export interface DataListResponse {
+  code: number
+  data: {
+    records: DataRecord[]
+    total: number
+    stats: {
+      total_count: number
+      positive_count: number
+      negative_count: number
+      neutral_count: number
+    }
+  }
+  message?: string
+}
+
+// 历史记录管理相关类型
+export interface HistoryRecord {
+  id: number
+  user_id: number
+  analysis_type: 'batch' | 'single'
+  comment_count: number
+  processing_time: number
+  status: 'success' | 'failed' | 'processing'
+  created_at: string
+  file_name?: string
+  error_message?: string
+}
+
+export interface HistoryQueryParams {
+  user_id?: number
+  analysis_type?: string
+  status?: string
+  start_date?: string
+  end_date?: string
+  page: number
+  page_size: number
+}
+
+export interface HistoryListResponse {
+  code: number
+  data: {
+    records: HistoryRecord[]
+    total: number
+    stats: {
+      total_records: number
+      today_records: number
+      success_rate: number
+      storage_used: string
+    }
+  }
+  message?: string
+}
+
+// 数据统计相关类型
+export interface StatisticsData {
+  total_comments: number
+  active_users: number
+  accuracy_rate: number
+  storage_size: string
+  daily_analysis: {
+    date: string
+    count: number
+  }[]
+  sentiment_distribution: {
+    positive: number
+    negative: number
+    neutral: number
+  }
+  time_period_stats: {
+    period: string
+    total_analysis: number
+    positive_count: number
+    negative_count: number
+    neutral_count: number
+    avg_confidence: number
+    active_users: number
+  }[]
+}
+
+export interface StatisticsResponse {
+  code: number
+  data: StatisticsData
+  message?: string
+}

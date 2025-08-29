@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电商评论情感分析系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* 头部导航 */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        /* 主要内容区域 */
+        .main-content {
+            padding: 2rem 0;
+            min-height: calc(100vh - 200px);
+        }
+
+        .page {
+            display: none;
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        /* 按钮样式 */
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        /* 表格样式 */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .table th,
+        .table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        /* 情感标签 */
+        .sentiment-positive {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.875rem;
+        }
+
+        .sentiment-negative {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.875rem;
+        }
+
+        .sentiment-neutral {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.875rem;
+        }
+
+        /* 文件上传区域 */
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            background-color: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            background-color: #e6ecff;
+            border-color: #5a67d8;
+        }
+
+        .upload-area.dragover {
+            background-color: #e6ecff;
+            border-color: #5a67d8;
+        }
+
+        /* 进度条 */
+        .progress {
+            background-color: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-bar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .nav {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table {
+                font-size: 0.875rem;
+            }
+
+            .table th,
+            .table td {
+                padding: 0.5rem;
+            }
+        }
+
+        /* 角色切换 */
+        .role-switch {
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            margin-left: 1rem;
+        }
+
+        .role-switch select {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .role-switch select option {
+            background: #333;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- 头部导航 -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <div class="logo">💬 电商评论情感分析系统</div>
+                <ul class="nav-links" id="navLinks">
+                    <!-- 导航链接将通过JavaScript动态生成 -->
+                </ul>
+                <div class="role-switch">
+                    <select id="roleSelect" onchange="switchRole()">
+                        <option value="user">用户端</option>
+                        <option value="admin">管理端</option>
+                    </select>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主要内容区域 -->
+    <main class="main-content">
+        <div class="container">
+            <!-- 用户端 - 首页 -->
+            <div id="user-home" class="page active">
+                <h1 class="page-title">🏠 欢迎使用电商评论情感分析系统</h1>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">1,234</div>
+                        <div class="stat-label">今日分析评论数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">89.5%</div>
+                        <div class="stat-label">分析准确率</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">567</div>
+                        <div class="stat-label">正面评论</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">123</div>
+                        <div class="stat-label">负面评论</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🚀 快速开始</h3>
+                    <p>选择您需要的分析方式：</p>
+                    <button class="btn" onclick="showPage('user-batch')">📊 批量数据分析</button>
+                    <button class="btn" onclick="showPage('user-single')">✍️ 单条评论分析</button>
+                    <button class="btn" onclick="showPage('user-history')">📋 查看历史记录</button>
+                </div>
+
+                <div class="card">
+                    <h3>📈 最近分析趋势</h3>
+                    <p>过去7天的情感分析统计：</p>
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 5px; margin-top: 1rem;">
+                        <p>📊 这里可以集成图表库显示趋势图</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户端 - 批量数据上传分析页面 -->
+            <div id="user-batch" class="page">
+                <h1 class="page-title">📊 批量数据上传分析</h1>
+                
+                <div class="card">
+                    <h3>📁 上传CSV文件</h3>
+                    <p>支持的文件格式：CSV文件，包含评论内容列</p>
+                    
+                    <div class="upload-area" onclick="document.getElementById('csvFile').click()">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📁</div>
+                        <p>点击或拖拽CSV文件到此处</p>
+                        <p style="color: #666; font-size: 0.9rem;">支持最大10MB的文件</p>
+                        <input type="file" id="csvFile" accept=".csv" style="display: none;" onchange="handleFileUpload(this)">
+                    </div>
+                    
+                    <div id="uploadProgress" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar" style="width: 0%"></div>
+                        </div>
+                        <p id="progressText">上传中...</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>⚙️ 分析设置</h3>
+                    <div class="form-group">
+                        <label>评论内容列名：</label>
+                        <input type="text" class="form-control" value="comment" placeholder="请输入CSV中评论内容的列名">
+                    </div>
+                    <div class="form-group">
+                        <label>分析模型：</label>
+                        <select class="form-control">
+                            <option>BERT情感分析模型</option>
+                            <option>LSTM情感分析模型</option>
+                            <option>传统机器学习模型</option>
+                        </select>
+                    </div>
+                    <button class="btn">🚀 开始分析</button>
+                </div>
+
+                <div class="card">
+                    <h3>📋 分析结果预览</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>评论内容</th>
+                                <th>情感分类</th>
+                                <th>置信度</th>
+                                <th>关键词</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>这个产品质量很好，非常满意！</td>
+                                <td><span class="sentiment-positive">正面</span></td>
+                                <td>95.2%</td>
+                                <td>质量好, 满意</td>
+                            </tr>
+                            <tr>
+                                <td>发货速度太慢了，很失望</td>
+                                <td><span class="sentiment-negative">负面</span></td>
+                                <td>88.7%</td>
+                                <td>慢, 失望</td>
+                            </tr>
+                            <tr>
+                                <td>还可以吧，一般般</td>
+                                <td><span class="sentiment-neutral">中性</span></td>
+                                <td>76.3%</td>
+                                <td>一般</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button class="btn btn-success">📥 导出结果</button>
+                </div>
+            </div>
+
+            <!-- 用户端 - 单条评价分析页面 -->
+            <div id="user-single" class="page">
+                <h1 class="page-title">✍️ 单条评论分析</h1>
+                
+                <div class="card">
+                    <h3>📝 输入评论内容</h3>
+                    <div class="form-group">
+                        <label>评论内容：</label>
+                        <textarea class="form-control" id="singleComment" placeholder="请输入要分析的评论内容...">这个产品的质量真的很棒，物流也很快，客服态度也很好，总体来说非常满意，会推荐给朋友的！</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>分析模型：</label>
+                        <select class="form-control">
+                            <option>BERT情感分析模型</option>
+                            <option>LSTM情感分析模型</option>
+                            <option>传统机器学习模型</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="analyzeSingleComment()">🔍 开始分析</button>
+                    <button class="btn btn-secondary" onclick="clearSingleComment()">🗑️ 清空内容</button>
+                </div>
+
+                <div class="card" id="singleResult">
+                    <h3>📊 分析结果</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">😊</div>
+                            <div><strong>情感分类</strong></div>
+                            <div style="color: #28a745; font-size: 1.2rem; font-weight: bold;">正面</div>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📈</div>
+                            <div><strong>置信度</strong></div>
+                            <div style="color: #667eea; font-size: 1.2rem; font-weight: bold;">92.8%</div>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">⭐</div>
+                            <div><strong>情感强度</strong></div>
+                            <div style="color: #ffc107; font-size: 1.2rem; font-weight: bold;">强烈</div>
+                        </div>
+                    </div>
+                    
+                    <h4>🔑 关键词分析</h4>
+                    <div style="margin: 1rem 0;">
+                        <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">质量棒</span>
+                        <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">物流快</span>
+                        <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">客服好</span>
+                        <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">满意</span>
+                        <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">推荐</span>
+                    </div>
+                    
+                    <h4>📝 详细分析</h4>
+                    <p>该评论表达了用户对产品的高度满意，主要体现在产品质量、物流速度和客服服务三个方面。用户使用了多个积极词汇，并表示愿意推荐给朋友，显示出强烈的正面情感倾向。</p>
+                    
+                    <button class="btn btn-success">💾 保存结果</button>
+                    <button class="btn">📤 分享结果</button>
+                </div>
+            </div>
+
+            <!-- 用户端 - 历史分析记录页面 -->
+            <div id="user-history" class="page">
+                <h1 class="page-title">📋 历史分析记录</h1>
+                
+                <div class="card">
+                    <h3>🔍 筛选条件</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div class="form-group">
+                            <label>时间范围：</label>
+                            <select class="form-control">
+                                <option>最近7天</option>
+                                <option>最近30天</option>
+                                <option>最近3个月</option>
+                                <option>自定义时间</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>分析类型：</label>
+                            <select class="form-control">
+                                <option>全部</option>
+                                <option>批量分析</option>
+                                <option>单条分析</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>情感分类：</label>
+                            <select class="form-control">
+                                <option>全部</option>
+                                <option>正面</option>
+                                <option>负面</option>
+                                <option>中性</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn">🔍 搜索</button>
+                    <button class="btn btn-secondary">🔄 重置</button>
+                </div>
+
+                <div class="card">
+                    <h3>📊 历史记录列表</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>分析时间</th>
+                                <th>分析类型</th>
+                                <th>评论数量</th>
+                                <th>正面比例</th>
+                                <th>负面比例</th>
+                                <th>中性比例</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>2024-01-15 14:30</td>
+                                <td>批量分析</td>
+                                <td>1,250条</td>
+                                <td>68.5%</td>
+                                <td>18.2%</td>
+                                <td>13.3%</td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">查看</button>
+                                    <button class="btn btn-success" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">导出</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>2024-01-15 10:15</td>
+                                <td>单条分析</td>
+                                <td>1条</td>
+                                <td>100%</td>
+                                <td>0%</td>
+                                <td>0%</td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">查看</button>
+                                    <button class="btn btn-success" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">导出</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>2024-01-14 16:45</td>
+                                <td>批量分析</td>
+                                <td>856条</td>
+                                <td>72.1%</td>
+                                <td>15.8%</td>
+                                <td>12.1%</td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">查看</button>
+                                    <button class="btn btn-success" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">导出</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button class="btn btn-secondary">⬅️ 上一页</button>
+                        <span style="margin: 0 1rem;">第 1 页，共 5 页</span>
+                        <button class="btn btn-secondary">下一页 ➡️</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户端 - 数据统计分析页面 -->
+            <div id="user-stats" class="page">
+                <h1 class="page-title">📈 数据统计分析</h1>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">15,678</div>
+                        <div class="stat-label">总分析评论数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">89.2%</div>
+                        <div class="stat-label">平均准确率</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">10,234</div>
+                        <div class="stat-label">正面评论数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">3,456</div>
+                        <div class="stat-label">负面评论数</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📊 情感分布统计</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0;">
+                        <div style="text-align: center; padding: 1rem; background: #d4edda; border-radius: 5px;">
+                            <div style="font-size: 2rem;">😊</div>
+                            <div><strong>正面情感</strong></div>
+                            <div style="font-size: 1.5rem; color: #155724;">65.3%</div>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8d7da; border-radius: 5px;">
+                            <div style="font-size: 2rem;">😞</div>
+                            <div><strong>负面情感</strong></div>
+                            <div style="font-size: 1.5rem; color: #721c24;">22.0%</div>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #fff3cd; border-radius: 5px;">
+                            <div style="font-size: 2rem;">😐</div>
+                            <div><strong>中性情感</strong></div>
+                            <div style="font-size: 1.5rem; color: #856404;">12.7%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📈 时间趋势分析</h3>
+                    <div style="background: #f8f9fa; padding: 2rem; border-radius: 5px; text-align: center;">
+                        <p>📊 这里可以集成Chart.js或ECharts显示时间趋势图</p>
+                        <p>包括：每日分析量、情感分布变化、准确率趋势等</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🔑 热门关键词</h3>
+                    <div style="margin: 1rem 0;">
+                        <h4>正面关键词 TOP 10</h4>
+                        <div style="margin: 0.5rem 0;">
+                            <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem; font-size: 1.1rem;">质量好 (1,234)</span>
+                            <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">满意 (987)</span>
+                            <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">推荐 (856)</span>
+                            <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">物流快 (743)</span>
+                            <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">性价比高 (621)</span>
+                        </div>
+                        
+                        <h4>负面关键词 TOP 10</h4>
+                        <div style="margin: 0.5rem 0;">
+                            <span style="background: #f8d7da; color: #721c24; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem; font-size: 1.1rem;">质量差 (456)</span>
+                            <span style="background: #f8d7da; color: #721c24; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">失望 (321)</span>
+                            <span style="background: #f8d7da; color: #721c24; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">慢 (298)</span>
+                            <span style="background: #f8d7da; color: #721c24; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">不值 (234)</span>
+                            <span style="background: #f8d7da; color: #721c24; padding: 0.25rem 0.5rem; border-radius: 3px; margin: 0.25rem;">退货 (187)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📊 模型性能统计</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>模型名称</th>
+                                <th>使用次数</th>
+                                <th>平均准确率</th>
+                                <th>平均处理时间</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>BERT情感分析模型</td>
+                                <td>8,456</td>
+                                <td>92.3%</td>
+                                <td>1.2秒</td>
+                                <td><span class="sentiment-positive">正常</span></td>
+                            </tr>
+                            <tr>
+                                <td>LSTM情感分析模型</td>
+                                <td>5,234</td>
+                                <td>87.8%</td>
+                                <td>0.8秒</td>
+                                <td><span class="sentiment-positive">正常</span></td>
+                            </tr>
+                            <tr>
+                                <td>传统机器学习模型</td>
+                                <td>1,988</td>
+                                <td>82.1%</td>
+                                <td>0.3秒</td>
+                                <td><span class="sentiment-positive">正常</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 管理端 - 用户管理 -->
+            <div id="admin-users" class="page">
+                <h1 class="page-title">👥 用户管理</h1>
+                
+                <div class="card">
+                    <h3>🔍 用户搜索</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div class="form-group">
+                            <label>用户名：</label>
+                            <input type="text" class="form-control" placeholder="输入用户名搜索">
+                        </div>
+                        <div class="form-group">
+                            <label>邮箱：</label>
+                            <input type="email" class="form-control" placeholder="输入邮箱搜索">
+                        </div>
+                        <div class="form-group">
+                            <label>状态：</label>
+                            <select class="form-control">
+                                <option>全部</option>
+                                <option>活跃</option>
+                                <option>禁用</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn">🔍 搜索</button>
+                    <button class="btn btn-success">➕ 添加用户</button>
+                </div>
+
+                <div class="card">
+                    <h3>👥 用户列表</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>用户ID</th>
+                                <th>用户名</th>
+                                <th>邮箱</th>
+                                <th>注册时间</th>
+                                <th>最后登录</th>
+                                <th>分析次数</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>001</td>
+                                <td>张三</td>
+                                <td>zhangsan@email.com</td>
+                                <td>2024-01-01</td>
+                                <td>2024-01-15 14:30</td>
+                                <td>156</td>
+                                <td><span class="sentiment-positive">活跃</span></td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">编辑</button>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">禁用</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>002</td>
+                                <td>李四</td>
+                                <td>lisi@email.com</td>
+                                <td>2024-01-05</td>
+                                <td>2024-01-14 09:15</td>
+                                <td>89</td>
+                                <td><span class="sentiment-positive">活跃</span></td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">编辑</button>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">禁用</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>003</td>
+                                <td>王五</td>
+                                <td>wangwu@email.com</td>
+                                <td>2024-01-10</td>
+                                <td>2024-01-12 16:45</td>
+                                <td>23</td>
+                                <td><span class="sentiment-negative">禁用</span></td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">编辑</button>
+                                    <button class="btn btn-success" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">启用</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button class="btn btn-secondary">⬅️ 上一页</button>
+                        <span style="margin: 0 1rem;">第 1 页，共 3 页</span>
+                        <button class="btn btn-secondary">下一页 ➡️</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">1,234</div>
+                        <div class="stat-label">总用户数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">1,156</div>
+                        <div class="stat-label">活跃用户</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">78</div>
+                        <div class="stat-label">禁用用户</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">45</div>
+                        <div class="stat-label">今日新增</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 管理端 - 数据管理 -->
+            <div id="admin-data" class="page">
+                <h1 class="page-title">💾 数据管理</h1>
+                
+                <div class="card">
+                    <h3>📊 数据概览</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">2.5TB</div>
+                            <div class="stat-label">总数据量</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">156,789</div>
+                            <div class="stat-label">评论总数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">1,234</div>
+                            <div class="stat-label">今日新增</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">98.5%</div>
+                            <div class="stat-label">数据完整性</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🔍 数据搜索与筛选</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div class="form-group">
+                            <label>时间范围：</label>
+                            <select class="form-control">
+                                <option>最近7天</option>
+                                <option>最近30天</option>
+                                <option>最近3个月</option>
+                                <option>自定义时间</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>情感分类：</label>
+                            <select class="form-control">
+                                <option>全部</option>
+                                <option>正面</option>
+                                <option>负面</option>
+                                <option>中性</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>数据来源：</label>
+                            <select class="form-control">
+                                <option>全部</option>
+                                <option>批量上传</option>
+                                <option>单条输入</option>
+                                <option>API接口</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn">🔍 搜索</button>
+                    <button class="btn btn-success">📥 导出数据</button>
+                    <button class="btn btn-danger">🗑️ 批量删除</button>
+                </div>
+
+                <div class="card">
+                    <h3>📋 数据列表</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox"></th>
+                                <th>数据ID</th>
+                                <th>评论内容</th>
+                                <th>情感分类</th>
+                                <th>置信度</th>
+                                <th>用户ID</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td>D001</td>
+                                <td>这个产品质量很好，非常满意！</td>
+                                <td><span class="sentiment-positive">正面</span></td>
+                                <td>95.2%</td>
+                                <td>U001</td>
+                                <td>2024-01-15 14:30</td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">查看</button>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">编辑</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td>D002</td>
+                                <td>发货速度太慢了，很失望</td>
+                                <td><span class="sentiment-negative">负面</span></td>
+                                <td>88.7%</td>
+                                <td>U002</td>
+                                <td>2024-01-15 10:15</td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">查看</button>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">编辑</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td>D003</td>
+                                <td>还可以吧，一般般</td>
+                                <td><span class="sentiment-neutral">中性</span></td>
+                                <td>76.3%</td>
+                                <td>U003</td>
+                                <td>2024-01-14 16:45</td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">查看</button>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">编辑</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button class="btn btn-secondary">⬅️ 上一页</button>
+                        <span style="margin: 0 1rem;">第 1 页，共 156 页</span>
+                        <button class="btn btn-secondary">下一页 ➡️</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🔧 数据维护</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                            <h4>🧹 数据清理</h4>
+                            <p>清理重复和无效数据</p>
+                            <button class="btn">开始清理</button>
+                        </div>
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                            <h4>💾 数据备份</h4>
+                            <p>创建数据备份</p>
+                            <button class="btn">立即备份</button>
+                        </div>
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                            <h4>📊 数据分析</h4>
+                            <p>生成数据质量报告</p>
+                            <button class="btn">生成报告</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 管理端 - 历史记录管理 -->
+            <div id="admin-history" class="page">
+                <h1 class="page-title">📋 历史记录管理</h1>
+                
+                <div class="card">
+                    <h3>📊 记录概览</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">15,678</div>
+                            <div class="stat-label">总分析记录</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">1,234</div>
+                            <div class="stat-label">今日记录</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">89.2%</div>
+                            <div class="stat-label">成功率</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">2.3GB</div>
+                            <div class="stat-label">存储占用</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🔍 记录搜索</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div class="form-group">
+                            <label>用户ID：</label>
+                            <input type="text" class="form-control" placeholder="输入用户ID">
+                        </div>
+                        <div class="form-group">
+                            <label>分析类型：</label>
+                            <select class="form-control">
+                                <option>全部</option>
+                                <option>批量分析</option>
+                                <option>单条分析</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>时间范围：</label>
+                            <select class="form-control">
+                                <option>最近7天</option>
+                                <option>最近30天</option>
+                                <option>最近3个月</option>
+                                <option>自定义时间</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>状态：</label>
+                            <select class="form-control">
+                                <option>全部</option>
+                                <option>成功</option>
+                                <option>失败</option>
+                                <option>处理中</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn">🔍 搜索</button>
+                    <button class="btn btn-success">📥 导出记录</button>
+                    <button class="btn btn-danger">🗑️ 批量删除</button>
+                </div>
+
+                <div class="card">
+                    <h3>📋 历史记录列表</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox"></th>
+                                <th>记录ID</th>
+                                <th>用户ID</th>
+                                <th>分析类型</th>
+                                <th>评论数量</th>
+                                <th>处理时间</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td>R001</td>
+                                <td>U001</td>
+                                <td>批量分析</td>
+                                <td>1,250条</td>
+                                <td>45.2秒</td>
+                                <td><span class="sentiment-positive">成功</span></td>
+                                <td>2024-01-15 14:30</td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">查看</button>
+                                    <button class="btn btn-success" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">导出</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td>R002</td>
+                                <td>U002</td>
+                                <td>单条分析</td>
+                                <td>1条</td>
+                                <td>1.2秒</td>
+                                <td><span class="sentiment-positive">成功</span></td>
+                                <td>2024-01-15 10:15</td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">查看</button>
+                                    <button class="btn btn-success" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">导出</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td>R003</td>
+                                <td>U003</td>
+                                <td>批量分析</td>
+                                <td>856条</td>
+                                <td>-</td>
+                                <td><span class="sentiment-negative">失败</span></td>
+                                <td>2024-01-14 16:45</td>
+                                <td>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">查看</button>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">重试</button>
+                                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">删除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button class="btn btn-secondary">⬅️ 上一页</button>
+                        <span style="margin: 0 1rem;">第 1 页，共 52 页</span>
+                        <button class="btn btn-secondary">下一页 ➡️</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🔧 记录维护</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                            <h4>🧹 清理过期记录</h4>
+                            <p>删除超过6个月的记录</p>
+                            <button class="btn">开始清理</button>
+                        </div>
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                            <h4>📊 生成报告</h4>
+                            <p>生成记录统计报告</p>
+                            <button class="btn">生成报告</button>
+                        </div>
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                            <h4>🔄 批量重试</h4>
+                            <p>重试失败的分析任务</p>
+                            <button class="btn">批量重试</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 管理端 - 数据统计 -->
+            <div id="admin-stats" class="page">
+                <h1 class="page-title">📊 数据统计</h1>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">156,789</div>
+                        <div class="stat-label">总分析评论数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">1,234</div>
+                        <div class="stat-label">活跃用户数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">89.5%</div>
+                        <div class="stat-label">分析准确率</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">2.5TB</div>
+                        <div class="stat-label">数据存储量</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📈 情感分析趋势</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px;">
+                            <h4>📊 每日分析量趋势</h4>
+                            <div style="height: 200px; background: white; border-radius: 5px; display: flex; align-items: center; justify-content: center; border: 1px solid #e9ecef;">
+                                <p style="color: #666;">📈 这里可以集成Chart.js显示趋势图</p>
+                            </div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px;">
+                            <h4>🎯 情感分布统计</h4>
+                            <div style="height: 200px; background: white; border-radius: 5px; display: flex; align-items: center; justify-content: center; border: 1px solid #e9ecef;">
+                                <p style="color: #666;">🥧 这里可以集成饼图显示情感分布</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📋 详细统计表</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>时间段</th>
+                                <th>总分析数</th>
+                                <th>正面评论</th>
+                                <th>负面评论</th>
+                                <th>中性评论</th>
+                                <th>平均置信度</th>
+                                <th>活跃用户</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>今日</td>
+                                <td>1,234</td>
+                                <td>567 (45.9%)</td>
+                                <td>123 (10.0%)</td>
+                                <td>544 (44.1%)</td>
+                                <td>89.5%</td>
+                                <td>89</td>
+                            </tr>
+                            <tr>
+                                <td>昨日</td>
+                                <td>1,156</td>
+                                <td>523 (45.2%)</td>
+                                <td>115 (9.9%)</td>
+                                <td>518 (44.8%)</td>
+                                <td>88.7%</td>
+                                <td>76</td>
+                            </tr>
+                            <tr>
+                                <td>本周</td>
+                                <td>8,567</td>
+                                <td>3,890 (45.4%)</td>
+                                <td>856 (10.0%)</td>
+                                <td>3,821 (44.6%)</td>
+                                <td>89.1%</td>
+                                <td>234</td>
+                            </tr>
+                            <tr>
+                                <td>本月</td>
+                                <td>34,567</td>
+                                <td>15,678 (45.3%)</td>
+                                <td>3,456 (10.0%)</td>
+                                <td>15,433 (44.7%)</td>
+                                <td>88.9%</td>
+                                <td>567</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <h3>🔧 统计工具</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                            <h4>📊 生成报告</h4>
+                            <p>生成详细的统计分析报告</p>
+                            <button class="btn">生成报告</button>
+                        </div>
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                            <h4>📥 导出数据</h4>
+                            <p>导出统计数据为Excel</p>
+                            <button class="btn">导出Excel</button>
+                        </div>
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 5px; text-align: center;">
+                            <h4>📈 自定义分析</h4>
+                            <p>创建自定义统计分析</p>
+                            <button class="btn">自定义分析</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer style="background: #333; color: white; text-align: center; padding: 2rem 0; margin-top: 3rem;">
+        <div class="container">
+            <p>&copy; 2024 电商评论情感分析系统. 保留所有权利.</p>
+            <p style="margin-top: 0.5rem; color: #ccc;">技术支持：AI智能分析团队</p>
+        </div>
+    </footer>
+
+    <script>
+        // 页面导航配置
+        const pageConfig = {
+            user: {
+                name: '用户端',
+                pages: [
+                    { id: 'user-home', name: '🏠 首页', icon: '🏠' },
+                    { id: 'user-batch', name: '📊 批量分析', icon: '📊' },
+                    { id: 'user-single', name: '✍️ 单条分析', icon: '✍️' },
+                    { id: 'user-history', name: '📋 历史记录', icon: '📋' },
+                    { id: 'user-stats', name: '📈 数据统计', icon: '📈' }
+                ]
+            },
+            admin: {
+                name: '管理端',
+                pages: [
+                    { id: 'admin-users', name: '👥 用户管理', icon: '👥' },
+                    { id: 'admin-data', name: '💾 数据管理', icon: '💾' },
+                    { id: 'admin-history', name: '📋 历史记录管理', icon: '📋' },
+                    { id: 'admin-stats', name: '📊 数据统计', icon: '📊' }
+                ]
+            }
+        };
+
+        let currentRole = 'user';
+        let currentPage = 'user-home';
+
+        /**
+         * 切换角色（用户端/管理端）
+         */
+        function switchRole() {
+            const roleSelect = document.getElementById('roleSelect');
+            currentRole = roleSelect.value;
+            
+            // 隐藏所有页面
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // 显示对应角色的第一个页面
+            const firstPage = pageConfig[currentRole].pages[0].id;
+            currentPage = firstPage;
+            document.getElementById(firstPage).classList.add('active');
+            
+            // 更新导航
+            updateNavigation();
+        }
+
+        /**
+         * 更新导航菜单
+         */
+        function updateNavigation() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.innerHTML = '';
+            
+            pageConfig[currentRole].pages.forEach(page => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = '#';
+                a.textContent = page.name;
+                a.onclick = (e) => {
+                    e.preventDefault();
+                    showPage(page.id);
+                };
+                
+                if (page.id === currentPage) {
+                    a.classList.add('active');
+                }
+                
+                li.appendChild(a);
+                navLinks.appendChild(li);
+            });
+        }
+
+        /**
+         * 显示指定页面
+         * @param {string} pageId - 页面ID
+         */
+        function showPage(pageId) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // 显示指定页面
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                currentPage = pageId;
+                
+                // 更新导航状态
+                document.querySelectorAll('.nav-links a').forEach(link => {
+                    link.classList.remove('active');
+                });
+                
+                // 找到对应的导航链接并设置为活跃状态
+                const navLinks = document.querySelectorAll('.nav-links a');
+                navLinks.forEach(link => {
+                    if (link.textContent.includes(getPageName(pageId))) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        }
+
+        /**
+         * 根据页面ID获取页面名称
+         * @param {string} pageId - 页面ID
+         * @returns {string} 页面名称
+         */
+        function getPageName(pageId) {
+            for (const role in pageConfig) {
+                const page = pageConfig[role].pages.find(p => p.id === pageId);
+                if (page) {
+                    return page.name;
+                }
+            }
+            return '';
+        }
+
+        /**
+         * 处理文件上传
+         * @param {HTMLInputElement} input - 文件输入元素
+         */
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (file) {
+                const progressDiv = document.getElementById('uploadProgress');
+                const progressBar = progressDiv.querySelector('.progress-bar');
+                const progressText = document.getElementById('progressText');
+                
+                progressDiv.style.display = 'block';
+                
+                // 模拟上传进度
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += Math.random() * 15;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                        progressText.textContent = '上传完成！';
+                        setTimeout(() => {
+                            progressDiv.style.display = 'none';
+                            progressBar.style.width = '0%';
+                        }, 2000);
+                    }
+                    progressBar.style.width = progress + '%';
+                    progressText.textContent = `上传中... ${Math.round(progress)}%`;
+                }, 200);
+            }
+        }
+
+        /**
+         * 分析单条评论
+         */
+        function analyzeSingleComment() {
+            const comment = document.getElementById('singleComment').value;
+            if (!comment.trim()) {
+                alert('请输入评论内容！');
+                return;
+            }
+            
+            // 这里可以添加实际的分析逻辑
+            alert('分析完成！结果已显示在下方。');
+        }
+
+        /**
+         * 清空单条评论输入
+         */
+        function clearSingleComment() {
+            document.getElementById('singleComment').value = '';
+        }
+
+        /**
+         * 添加拖拽上传功能
+         */
+        function initDragAndDrop() {
+            const uploadArea = document.querySelector('.upload-area');
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const csvFile = document.getElementById('csvFile');
+                    csvFile.files = files;
+                    handleFileUpload(csvFile);
+                }
+            });
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNavigation();
+            initDragAndDrop();
+            
+            // 添加一些交互效果
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 150);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

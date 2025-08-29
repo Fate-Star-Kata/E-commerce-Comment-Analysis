@@ -9,7 +9,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AddUserDialog: typeof import('./src/components/pages/admin/userManage/AddUserDialog.vue')['default']
-    AnalysisProgress: typeof import('./src/components/sentiment/AnalysisProgress.vue')['default']
+    AnalysisProgress: typeof import('./src/components/pages/user/sentiment/AnalysisProgress.vue')['default']
     AnalysisResult: typeof import('./src/components/pages/user/sentiment/AnalysisResult.vue')['default']
     ArticleList: typeof import('./src/components/pages/admin/knowledge/ArticleList.vue')['default']
     BaseInfo: typeof import('./src/components/pages/userInfo/BaseInfo.vue')['default']
