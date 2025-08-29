@@ -89,6 +89,7 @@ export interface BatchDeleteAnalysisRequest {
 export interface HistoryQueryParams {
   page?: number
   page_size?: number
+  query?: string
   analysis_type?: AnalysisType | undefined
   sentiment?: SentimentType | undefined
   start_date?: string

@@ -79,10 +79,10 @@
                 <el-option label="中性" value="neutral" />
               </el-select>
             </el-form-item>
-            <el-form-item label="数据来源">
-              <el-select v-model="searchForm.source" placeholder="请选择数据来源" clearable style="width: 150px">
-                <el-option label="文件上传" value="file" />
-                <el-option label="API接口" value="api" />
+            <el-form-item label="分析类型">
+              <el-select v-model="searchForm.analysis_type" placeholder="请选择分析类型" clearable style="width: 150px">
+                <el-option label="单条分析" value="single" />
+                <el-option label="批量分析" value="batch" />
               </el-select>
             </el-form-item>
             <el-form-item label="时间范围">
@@ -135,30 +135,57 @@
             style="width: 100%">
             <el-table-column type="selection" width="55" />
             <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column prop="content" label="评论内容" min-width="300">
+            <el-table-column prop="content" label="评论内容" min-width="200">
               <template #default="{ row }">
                 <div class="content-cell">
-                  {{ row.content }}
+                  <span v-if="row.analysis_type === 'single'">{{ row.comment_text }}</span>
+                  <span v-else class="batch-info clickable" @click="showBatchDetails(row)">批量分析 ({{ row.total_count }} 条数据) <el-icon><View /></el-icon></span>
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="sentiment" label="情感分析" width="120">
+            <el-table-column prop="sentiment" label="情感分析" width="200">
               <template #default="{ row }">
-                <el-tag :type="getSentimentTagType(row.sentiment)" size="small">
+                <el-tag v-if="row.analysis_type === 'single'" :type="getSentimentType(row.sentiment)" size="small">
                   {{ getSentimentText(row.sentiment) }}
                 </el-tag>
+                <div v-else class="batch-sentiment-progress">
+                  <div class="progress-container" :title="getBatchSentimentTooltip(row)">
+                    <div class="progress-bar">
+                      <div 
+                        class="progress-segment positive" 
+                        :style="{ width: getBatchSentimentPercentage(row, 'positive') + '%' }"
+                      ></div>
+                      <div 
+                        class="progress-segment neutral" 
+                        :style="{ width: getBatchSentimentPercentage(row, 'neutral') + '%' }"
+                      ></div>
+                      <div 
+                        class="progress-segment negative" 
+                        :style="{ width: getBatchSentimentPercentage(row, 'negative') + '%' }"
+                      ></div>
+                    </div>
+                  </div>
+                  <div class="sentiment-counts">
+                    正面: {{ row.positive_count || 0 }} | 
+                    负面: {{ row.negative_count || 0 }} | 
+                    中性: {{ row.neutral_count || 0 }}
+                  </div>
+                </div>
               </template>
             </el-table-column>
             <el-table-column prop="confidence" label="置信度" width="100">
               <template #default="{ row }">
-                <el-progress :percentage="Math.round(row.confidence * 100)" :stroke-width="6" :show-text="false" />
-                <span class="confidence-text">{{ Math.round(row.confidence * 100) }}%</span>
+                <div v-if="row.analysis_type === 'single' && row.confidence">
+                  <el-progress :percentage="Math.round(row.confidence * 100)" :stroke-width="6" :show-text="false" />
+                  <span class="confidence-text">{{ Math.round(row.confidence * 100) }}%</span>
+                </div>
+                <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="source" label="数据来源" width="100">
+            <el-table-column prop="analysis_type" label="分析类型" width="100">
               <template #default="{ row }">
-                <el-tag :type="row.source === 'file' ? 'success' : 'info'" size="small">
-                  {{ row.source === 'file' ? '文件' : 'API' }}
+                <el-tag :type="row.analysis_type === 'single' ? 'success' : 'info'" size="small">
+                  {{ row.analysis_type === 'single' ? '单条' : '批量' }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -169,12 +196,14 @@
             </el-table-column>
             <el-table-column label="操作" width="120" fixed="right">
               <template #default="{ row }">
-                <el-button type="primary" size="small" text @click="handleView(row)">
-                  查看
-                </el-button>
-                <el-button type="danger" size="small" text @click="handleDelete(row)">
-                  删除
-                </el-button>
+                <div class="action-buttons">
+                  <el-button type="primary" size="small" text @click="handleView(row)">
+                    查看
+                  </el-button>
+                  <el-button type="danger" size="small" text @click="handleDelete(row)">
+                    删除
+                  </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -191,28 +220,106 @@
     <!-- 查看详情对话框 -->
     <el-dialog v-model="viewDialogVisible" title="数据详情" width="600px" destroy-on-close>
       <div v-if="currentRecord" class="detail-content">
-        <el-descriptions :column="1" border>
-          <el-descriptions-item label="ID">{{ currentRecord.id }}</el-descriptions-item>
-          <el-descriptions-item label="评论内容">
-            <div class="content-detail">{{ currentRecord.content }}</div>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="记录ID">
+            {{ currentRecord.id }}
           </el-descriptions-item>
-          <el-descriptions-item label="情感分析">
-            <el-tag :type="getSentimentTagType(currentRecord.sentiment)">
-              {{ getSentimentText(currentRecord.sentiment) }}
+          <el-descriptions-item label="分析类型">
+            <el-tag :type="currentRecord.analysis_type === 'single' ? 'success' : 'info'">
+              {{ currentRecord.analysis_type === 'single' ? '单条分析' : '批量分析' }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="置信度">
-            <el-progress :percentage="Math.round(currentRecord.confidence * 100)" :stroke-width="8" />
-          </el-descriptions-item>
-          <el-descriptions-item label="数据来源">
-            <el-tag :type="currentRecord.source === 'file' ? 'success' : 'info'">
-              {{ currentRecord.source === 'file' ? '文件上传' : 'API接口' }}
-            </el-tag>
-          </el-descriptions-item>
+          
+          <!-- 单条分析的详细信息 -->
+          <template v-if="currentRecord.analysis_type === 'single'">
+            <el-descriptions-item label="评论内容" :span="2">
+              <div class="content-display">
+                {{ currentRecord.comment_text }}
+              </div>
+            </el-descriptions-item>
+            <el-descriptions-item label="情感分析">
+              <el-tag :type="getSentimentType(currentRecord.sentiment || '')" size="large">
+                {{ getSentimentText(currentRecord.sentiment || '') }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="置信度">
+              <el-progress :percentage="Math.round((currentRecord.confidence || 0) * 100)" :stroke-width="8" />
+            </el-descriptions-item>
+          </template>
+          
+          <!-- 批量分析的统计信息 -->
+          <template v-else>
+            <el-descriptions-item label="总数据量">
+              {{ currentRecord.total_count }}
+            </el-descriptions-item>
+            <el-descriptions-item label="正面评论">
+              {{ currentRecord.positive_count }}
+            </el-descriptions-item>
+            <el-descriptions-item label="负面评论">
+              {{ currentRecord.negative_count }}
+            </el-descriptions-item>
+            <el-descriptions-item label="中性评论">
+              {{ currentRecord.neutral_count }}
+            </el-descriptions-item>
+            <el-descriptions-item label="文件名" v-if="currentRecord.file_name">
+              {{ currentRecord.file_name }}
+            </el-descriptions-item>
+          </template>
+          
           <el-descriptions-item label="创建时间">
             {{ formatDate(currentRecord.created_at) }}
           </el-descriptions-item>
         </el-descriptions>
+      </div>
+    </el-dialog>
+
+    <!-- 批量详情对话框 -->
+    <el-dialog v-model="batchDetailsVisible" title="批量分析详情" width="80%" destroy-on-close>
+      <div v-if="currentBatchRecord" class="batch-details-content">
+        <div class="batch-summary">
+          <el-descriptions :column="4" border>
+            <el-descriptions-item label="总数据量">
+              {{ currentBatchRecord.total_count }}
+            </el-descriptions-item>
+            <el-descriptions-item label="正面评论">
+              <el-tag type="success">{{ currentBatchRecord.positive_count }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="负面评论">
+              <el-tag type="danger">{{ currentBatchRecord.negative_count }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="中性评论">
+              <el-tag type="info">{{ currentBatchRecord.neutral_count }}</el-tag>
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+        
+        <div class="batch-details-table">
+          <el-table v-loading="batchDetailsLoading" :data="batchDetailsList" stripe style="width: 100%" max-height="400">
+             <el-table-column prop="comment_text" label="评论内容" min-width="300">
+               <template #default="{ row }">
+                 <div class="content-cell">
+                   {{ row.comment_text }}
+                 </div>
+               </template>
+             </el-table-column>
+            <el-table-column prop="sentiment" label="情感分析" width="120">
+              <template #default="{ row }">
+                <el-tag :type="getSentimentType(row.sentiment || '')" size="small">
+                  {{ getSentimentText(row.sentiment || '') }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="confidence" label="置信度" width="120">
+              <template #default="{ row }">
+                <div v-if="row.confidence">
+                  <el-progress :percentage="Math.round(row.confidence * 100)" :stroke-width="6" :show-text="false" />
+                  <span class="confidence-text">{{ Math.round(row.confidence * 100) }}%</span>
+                </div>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -232,25 +339,30 @@ import {
   Delete
 } from '@element-plus/icons-vue'
 import { Motion } from 'motion-v'
-import type {
-  DataRecord,
-  DataQueryParams,
-  DataListResponse
-} from '@/types/components/admin'
 import {
   getAnalysisHistory,
-  deleteAnalysisRecord
+  deleteAnalysisRecord,
+  getAnalysisDetail
 } from '@/api/page_apis'
 import type {
-  HistoryQueryParams
+  HistoryQueryParams,
+  HistoryRecord,
+  HistoryApiResponse,
+  AnalysisDetailResponse,
+  SentimentType,
+  AnalysisType
 } from '@/types/apis/page_apis_T'
 
 // 响应式数据
 const loading = ref(false)
-const dataList = ref<DataRecord[]>([])
-const selectedRows = ref<DataRecord[]>([])
+const dataList = ref<HistoryRecord[]>([])
+const selectedRows = ref<HistoryRecord[]>([])
 const viewDialogVisible = ref(false)
-const currentRecord = ref<DataRecord | null>(null)
+const currentRecord = ref<HistoryRecord | null>(null)
+const batchDetailsVisible = ref(false)
+const batchDetailsList = ref<any[]>([])
+const currentBatchRecord = ref<HistoryRecord | null>(null)
+const batchDetailsLoading = ref(false)
 const dateRange = ref<[string, string] | null>(null)
 
 // 统计数据
@@ -262,10 +374,10 @@ const stats = reactive({
 })
 
 // 搜索表单
-const searchForm = reactive<Omit<DataQueryParams, 'page' | 'page_size'>>({
+const searchForm = reactive({
   query: '',
   sentiment: '',
-  source: '',
+  analysis_type: '',
   start_date: '',
   end_date: ''
 })
@@ -283,41 +395,89 @@ const getDataListData = async () => {
   try {
     const apiParams: HistoryQueryParams = {
        page: pagination.current,
-       pageSize: pagination.pageSize,
-       keyword: searchForm.query || undefined,
-       sentiment: searchForm.sentiment || undefined,
-       type: searchForm.type || undefined,
-       startTime: searchForm.start_date || undefined,
-       endTime: searchForm.end_date || undefined
+       page_size: pagination.pageSize,
+       query: searchForm.query || undefined,
+       sentiment: (searchForm.sentiment as SentimentType) || undefined,
+       analysis_type: (searchForm.analysis_type as AnalysisType) || undefined,
+       start_date: searchForm.start_date || undefined,
+       end_date: searchForm.end_date || undefined
      }
 
+     // 处理日期范围
      if (dateRange.value) {
-       apiParams.startTime = dateRange.value[0]
-       apiParams.endTime = dateRange.value[1]
+       apiParams.start_date = dateRange.value[0]
+       apiParams.end_date = dateRange.value[1]
+       searchForm.start_date = dateRange.value[0]
+       searchForm.end_date = dateRange.value[1]
      }
 
-    const response = await getAnalysisHistory(apiParams)
+    const response: HistoryApiResponse = await getAnalysisHistory(apiParams)
     
-    // 将API数据转换为页面所需格式
-     const transformedRecords: DataRecord[] = response.data.records.map((record: ApiDataRecord) => ({
-       id: record.id,
-       content: record.content,
-       sentiment: record.sentiment,
-       confidence: record.confidence,
-       analysis_type: record.analysis_type,
-       created_at: record.created_at,
-       updated_at: record.updated_at,
-       batch_id: record.batch_id,
-       user_id: record.user_id
-     }))
-
-    dataList.value = transformedRecords
-     pagination.total = response.data.total
+    // 直接使用API返回的数据
+    dataList.value = response.data.records
+    pagination.total = response.data.total
+    
+    // 计算统计数据
+    calculateStats(response.data.records)
   } catch (error) {
     ElMessage.error('获取数据失败')
     console.error('获取数据失败:', error)
   } finally {
     loading.value = false
+  }
+}
+
+// 计算统计数据
+const calculateStats = (records: HistoryRecord[]) => {
+  // 重置统计数据
+  stats.total_count = 0
+  stats.positive_count = 0
+  stats.negative_count = 0
+  stats.neutral_count = 0
+  
+  records.forEach(record => {
+    // 对于批量分析，使用其统计数据
+    if (record.analysis_type === 'batch') {
+      stats.total_count += record.total_count
+      stats.positive_count += record.positive_count
+      stats.negative_count += record.negative_count
+      stats.neutral_count += record.neutral_count
+    } else if (record.analysis_type === 'single' && record.sentiment) {
+      // 对于单条分析，根据情感类型计数
+      stats.total_count += 1
+      if (record.sentiment === 'positive') {
+        stats.positive_count += 1
+      } else if (record.sentiment === 'negative') {
+        stats.negative_count += 1
+      } else if (record.sentiment === 'neutral') {
+        stats.neutral_count += 1
+      }
+    }
+  })
+}
+
+// 显示批量详情
+const showBatchDetails = async (row: HistoryRecord) => {
+  if (row.analysis_type !== 'batch') return
+  
+  currentBatchRecord.value = row
+  batchDetailsLoading.value = true
+  batchDetailsVisible.value = true
+  
+  try {
+    const response = await getAnalysisDetail(row.id)
+    if (response.code === 200 && response.data) {
+      batchDetailsList.value = response.data.details || []
+    } else {
+      ElMessage.error('获取批量详情失败')
+      batchDetailsList.value = []
+    }
+  } catch (error) {
+    console.error('获取批量详情失败:', error)
+    ElMessage.error('获取批量详情失败')
+    batchDetailsList.value = []
+  } finally {
+    batchDetailsLoading.value = false
   }
 }
 
@@ -332,7 +492,7 @@ const handleReset = () => {
   Object.assign(searchForm, {
     query: '',
     sentiment: '',
-    source: '',
+    analysis_type: '',
     start_date: '',
     end_date: ''
   })
@@ -342,13 +502,13 @@ const handleReset = () => {
 }
 
 // 查看详情
-const handleView = (row: DataRecord) => {
+const handleView = (row: HistoryRecord) => {
   currentRecord.value = row
   viewDialogVisible.value = true
 }
 
 // 删除单条记录
-const handleDelete = async (row: DataRecord) => {
+const handleDelete = async (row: HistoryRecord) => {
   try {
     await ElMessageBox.confirm(
       `确定要删除这条数据吗？`,
@@ -360,7 +520,7 @@ const handleDelete = async (row: DataRecord) => {
       }
     )
 
-    await deleteAnalysisRecord({ record_id: parseInt(row.id) })
+    await deleteAnalysisRecord({ record_id: row.id })
     ElMessage.success('删除成功')
     getDataListData()
   } catch (error) {
@@ -389,7 +549,7 @@ const handleBatchDelete = async () => {
     const ids = selectedRows.value.map(row => row.id)
     // 使用循环调用单个删除API实现批量删除
     for (const id of ids) {
-      await deleteAnalysisRecord({ record_id: parseInt(id) })
+      await deleteAnalysisRecord({ record_id: id })
     }
     ElMessage.success('批量删除成功')
     getDataListData()
@@ -423,17 +583,31 @@ const handleExport = async () => {
 }
 
 // 生成CSV内容
-const generateCSV = (data: DataRecord[]) => {
-  const headers = ['ID', '评论内容', '情感分析', '置信度', '数据来源', '创建时间']
+const generateCSV = (data: HistoryRecord[]) => {
+  const headers = ['ID', '分析类型', '内容/统计', '情感分析', '置信度', '创建时间']
   const csvRows = [headers.join(',')]
   
   data.forEach(row => {
+    let contentInfo = ''
+    let sentimentInfo = ''
+    let confidenceInfo = ''
+    
+    if (row.analysis_type === 'single') {
+        contentInfo = `"${(row.comment_text || '').replace(/"/g, '""')}"` // 转义双引号
+        sentimentInfo = getSentimentText(row.sentiment || '')
+        confidenceInfo = row.confidence ? `${Math.round(row.confidence * 100)}%` : '-'
+      } else {
+        contentInfo = `批量分析(${row.total_count || 0}条)`
+      sentimentInfo = `正面:${row.positive_count || 0} 负面:${row.negative_count || 0} 中性:${row.neutral_count || 0}`
+      confidenceInfo = '-'
+    }
+    
     const values = [
       row.id,
-      `"${row.content.replace(/"/g, '""')}"`, // 转义双引号
-      getSentimentText(row.sentiment),
-      `${Math.round(row.confidence * 100)}%`,
-      row.source === 'file' ? '文件' : 'API',
+      row.analysis_type === 'single' ? '单条分析' : '批量分析',
+      contentInfo,
+      sentimentInfo,
+      confidenceInfo,
       formatDate(row.created_at)
     ]
     csvRows.push(values.join(','))
@@ -443,7 +617,7 @@ const generateCSV = (data: DataRecord[]) => {
 }
 
 // 表格选择变化
-const handleSelectionChange = (selection: DataRecord[]) => {
+const handleSelectionChange = (selection: HistoryRecord[]) => {
   selectedRows.value = selection
 }
 
@@ -461,18 +635,20 @@ const handlePageChange = (page: number) => {
 }
 
 // 获取情感标签类型
-const getSentimentTagType = (sentiment: string) => {
+const getSentimentType = (sentiment: string) => {
   switch (sentiment) {
     case 'positive':
       return 'success'
     case 'negative':
       return 'danger'
     case 'neutral':
-      return 'info'
+      return 'warning'
     default:
       return 'info'
   }
 }
+
+
 
 // 获取情感文本
 const getSentimentText = (sentiment: string) => {
@@ -486,6 +662,28 @@ const getSentimentText = (sentiment: string) => {
     default:
       return '未知'
   }
+}
+
+// 计算批量情感分析百分比
+const getBatchSentimentPercentage = (row: any, type: 'positive' | 'negative' | 'neutral') => {
+  const total = (row.positive_count || 0) + (row.negative_count || 0) + (row.neutral_count || 0)
+  if (total === 0) return 0
+  
+  const count = type === 'positive' ? (row.positive_count || 0) :
+                type === 'negative' ? (row.negative_count || 0) :
+                (row.neutral_count || 0)
+  
+  return Math.round((count / total) * 100)
+}
+
+// 生成批量情感分析提示文本
+const getBatchSentimentTooltip = (row: any) => {
+  const total = (row.positive_count || 0) + (row.negative_count || 0) + (row.neutral_count || 0)
+  const positivePercent = getBatchSentimentPercentage(row, 'positive')
+  const negativePercent = getBatchSentimentPercentage(row, 'negative')
+  const neutralPercent = getBatchSentimentPercentage(row, 'neutral')
+  
+  return `总计: ${total} 条\n正面: ${row.positive_count || 0} 条 (${positivePercent}%)\n负面: ${row.negative_count || 0} 条 (${negativePercent}%)\n中性: ${row.neutral_count || 0} 条 (${neutralPercent}%)`
 }
 
 // 格式化日期
@@ -598,7 +796,114 @@ onMounted(() => {
 .confidence-text {
   margin-left: 8px;
   font-size: 12px;
+  color: #606266;
+}
+
+.batch-info {
+  color: #909399;
+  font-style: italic;
+}
+
+.batch-sentiment {
+  font-size: 12px;
+  color: #606266;
+  line-height: 1.4;
+}
+
+.content-display {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.clickable {
+  cursor: pointer;
+  color: #409eff;
+  text-decoration: underline;
+}
+
+.clickable:hover {
+  color: #66b1ff;
+}
+
+.batch-details-content {
+  padding: 16px 0;
+}
+
+.batch-summary {
+  margin-bottom: 20px;
+}
+
+.batch-details-table {
+  margin-top: 16px;
+}
+
+.content-cell {
+  max-width: 300px;
+  word-break: break-word;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.confidence-text {
+  font-size: 12px;
   color: #666;
+  margin-left: 8px;
+}
+
+/* 批量情感分析进度条样式 */
+.batch-sentiment-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-container {
+  width: 100%;
+  cursor: pointer;
+}
+
+.progress-bar {
+  display: flex;
+  height: 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+
+.progress-segment {
+  height: 100%;
+  transition: all 0.3s ease;
+}
+
+.progress-segment.positive {
+  background-color: #67c23a; /* 正面 - 绿色 */
+}
+
+.progress-segment.neutral {
+  background-color: #e6a23c; /* 中性 - 黄色 */
+}
+
+.progress-segment.negative {
+  background-color: #f56c6c; /* 负面 - 红色 */
+}
+
+.sentiment-counts {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.2;
+}
+
+/* 操作按钮样式 */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .pagination-wrapper {

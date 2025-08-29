@@ -15,7 +15,7 @@
           v-if="page !== '...'"
           class="join-item btn" 
           :class="{ 'btn-active': page === currentPage }"
-          @click="$emit('update:currentPage', page)"
+          @click="$emit('update:currentPage', page as number)"
         >
           {{ page }}
         </button>
