@@ -281,6 +281,17 @@ import type {
   HistoryQueryParams,
   HistoryListResponse
 } from '@/types/components/admin'
+import {
+  getAnalysisHistory,
+  getAnalysisDetail,
+  deleteAnalysisRecord
+} from '@/api/page_apis'
+import type {
+  HistoryRecord as ApiHistoryRecord,
+  HistoryQueryParams as ApiHistoryQueryParams,
+  HistoryResponse as ApiHistoryResponse,
+  AnalysisDetailResponse as ApiAnalysisDetailResponse
+} from '@/types/apis/page_apis_T'
 
 // 响应式数据
 const loading = ref(false)
@@ -327,35 +338,43 @@ const pagination = reactive({
 const getHistoryList = async () => {
   loading.value = true
   try {
-    const params: HistoryQueryParams = {
-      ...searchForm,
+    const apiParams: ApiHistoryQueryParams = {
       page: pagination.current,
-      page_size: pagination.pageSize
+      pageSize: pagination.pageSize,
+      keyword: searchForm.user_id || undefined,
+      type: searchForm.analysis_type || undefined,
+      status: searchForm.status || undefined,
+      startTime: searchForm.start_date || undefined,
+      endTime: searchForm.end_date || undefined
     }
 
     if (dateRange.value) {
-      params.start_date = dateRange.value[0]
-      params.end_date = dateRange.value[1]
+      apiParams.startTime = dateRange.value[0]
+      apiParams.endTime = dateRange.value[1]
     }
 
-    // TODO: 替换为实际的API调用
-    const response: HistoryListResponse = {
-      code: 200,
-      data: {
-        records: [],
-        total: 0,
-        stats: {
-          total_records: 0,
-          today_records: 0,
-          success_rate: 0,
-          storage_used: '0MB'
-        }
-      }
-    }
+    const response: ApiHistoryResponse = await getAnalysisHistory(apiParams)
+    
+    // 将API数据转换为页面所需格式
+    const transformedRecords: HistoryRecord[] = response.data.records.map((record: ApiHistoryRecord) => ({
+      id: record.id,
+      user_id: record.user_id || '',
+      analysis_type: record.analysis_type,
+      comment_count: record.comment_count || 0,
+      processing_time: record.processing_time || 0,
+      status: record.status || 'success',
+      file_name: record.file_name || '',
+      created_at: record.created_at,
+      error_message: record.error_message
+    }))
 
-    historyList.value = response.data.records
+    historyList.value = transformedRecords
     pagination.total = response.data.total
-    Object.assign(stats, response.data.stats)
+    
+    // 更新统计数据
+    if (response.data.stats) {
+      Object.assign(stats, response.data.stats)
+    }
   } catch (error) {
     ElMessage.error('获取历史记录失败')
     console.error('获取历史记录失败:', error)
@@ -385,9 +404,20 @@ const handleReset = () => {
 }
 
 // 查看详情
-const handleView = (row: HistoryRecord) => {
-  currentRecord.value = row
-  viewDialogVisible.value = true
+const handleView = async (row: HistoryRecord) => {
+  try {
+    const response: ApiAnalysisDetailResponse = await getAnalysisDetail(row.id)
+    
+    // 将API数据转换为页面所需格式
+    currentRecord.value = {
+      ...row,
+      ...response.data
+    }
+    viewDialogVisible.value = true
+  } catch (error) {
+    console.error('获取详情失败:', error)
+    ElMessage.error('获取详情失败')
+  }
 }
 
 // 重试处理
@@ -424,11 +454,14 @@ const handleDelete = async (row: HistoryRecord) => {
       }
     )
 
-    // TODO: 调用删除API
+    await deleteAnalysisRecord({ id: row.id })
     ElMessage.success('删除成功')
     getHistoryList()
   } catch (error) {
-    // 用户取消删除
+    if (error !== 'cancel') {
+      console.error('删除失败:', error)
+      ElMessage.error('删除失败')
+    }
   }
 }
 

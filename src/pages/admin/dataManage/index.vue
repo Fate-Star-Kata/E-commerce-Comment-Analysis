@@ -237,6 +237,13 @@ import type {
   DataQueryParams,
   DataListResponse
 } from '@/types/components/admin'
+import {
+  getAnalysisHistory,
+  deleteAnalysisRecord
+} from '@/api/page_apis'
+import type {
+  HistoryQueryParams
+} from '@/types/apis/page_apis_T'
 
 // 响应式数据
 const loading = ref(false)
@@ -271,38 +278,41 @@ const pagination = reactive({
 })
 
 // 获取数据列表
-const getDataList = async () => {
+const getDataListData = async () => {
   loading.value = true
   try {
-    const params: DataQueryParams = {
-      ...searchForm,
-      page: pagination.current,
-      page_size: pagination.pageSize
-    }
+    const apiParams: HistoryQueryParams = {
+       page: pagination.current,
+       pageSize: pagination.pageSize,
+       keyword: searchForm.query || undefined,
+       sentiment: searchForm.sentiment || undefined,
+       type: searchForm.type || undefined,
+       startTime: searchForm.start_date || undefined,
+       endTime: searchForm.end_date || undefined
+     }
 
-    if (dateRange.value) {
-      params.start_date = dateRange.value[0]
-      params.end_date = dateRange.value[1]
-    }
+     if (dateRange.value) {
+       apiParams.startTime = dateRange.value[0]
+       apiParams.endTime = dateRange.value[1]
+     }
 
-    // TODO: 替换为实际的API调用
-    const response: DataListResponse = {
-      code: 200,
-      data: {
-        records: [],
-        total: 0,
-        stats: {
-          total_count: 0,
-          positive_count: 0,
-          negative_count: 0,
-          neutral_count: 0
-        }
-      }
-    }
+    const response = await getAnalysisHistory(apiParams)
+    
+    // 将API数据转换为页面所需格式
+     const transformedRecords: DataRecord[] = response.data.records.map((record: ApiDataRecord) => ({
+       id: record.id,
+       content: record.content,
+       sentiment: record.sentiment,
+       confidence: record.confidence,
+       analysis_type: record.analysis_type,
+       created_at: record.created_at,
+       updated_at: record.updated_at,
+       batch_id: record.batch_id,
+       user_id: record.user_id
+     }))
 
-    dataList.value = response.data.records
-    pagination.total = response.data.total
-    Object.assign(stats, response.data.stats)
+    dataList.value = transformedRecords
+     pagination.total = response.data.total
   } catch (error) {
     ElMessage.error('获取数据失败')
     console.error('获取数据失败:', error)
@@ -314,7 +324,7 @@ const getDataList = async () => {
 // 搜索
 const handleSearch = () => {
   pagination.current = 1
-  getDataList()
+  getDataListData()
 }
 
 // 重置
@@ -328,7 +338,7 @@ const handleReset = () => {
   })
   dateRange.value = null
   pagination.current = 1
-  getDataList()
+  getDataListData()
 }
 
 // 查看详情
@@ -350,9 +360,9 @@ const handleDelete = async (row: DataRecord) => {
       }
     )
 
-    // TODO: 调用删除API
+    await deleteAnalysisRecord({ record_id: parseInt(row.id) })
     ElMessage.success('删除成功')
-    getDataList()
+    getDataListData()
   } catch (error) {
     // 用户取消删除
   }
@@ -376,18 +386,60 @@ const handleBatchDelete = async () => {
       }
     )
 
-    // TODO: 调用批量删除API
+    const ids = selectedRows.value.map(row => row.id)
+    // 使用循环调用单个删除API实现批量删除
+    for (const id of ids) {
+      await deleteAnalysisRecord({ record_id: parseInt(id) })
+    }
     ElMessage.success('批量删除成功')
-    getDataList()
+    getDataListData()
   } catch (error) {
     // 用户取消删除
   }
 }
 
 // 导出数据
-const handleExport = () => {
-  // TODO: 实现数据导出功能
-  ElMessage.info('导出功能开发中')
+const handleExport = async () => {
+  try {
+    // 前端导出当前页面数据为CSV格式
+    const csvContent = generateCSV(dataList.value)
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    
+    // 创建下载链接
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `data_export_${new Date().getTime()}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    ElMessage.success('导出成功')
+  } catch (error) {
+    console.error('导出失败:', error)
+    ElMessage.error('导出失败')
+  }
+}
+
+// 生成CSV内容
+const generateCSV = (data: DataRecord[]) => {
+  const headers = ['ID', '评论内容', '情感分析', '置信度', '数据来源', '创建时间']
+  const csvRows = [headers.join(',')]
+  
+  data.forEach(row => {
+    const values = [
+      row.id,
+      `"${row.content.replace(/"/g, '""')}"`, // 转义双引号
+      getSentimentText(row.sentiment),
+      `${Math.round(row.confidence * 100)}%`,
+      row.source === 'file' ? '文件' : 'API',
+      formatDate(row.created_at)
+    ]
+    csvRows.push(values.join(','))
+  })
+  
+  return csvRows.join('\n')
 }
 
 // 表格选择变化
@@ -399,13 +451,13 @@ const handleSelectionChange = (selection: DataRecord[]) => {
 const handleSizeChange = (size: number) => {
   pagination.pageSize = size
   pagination.current = 1
-  getDataList()
+  getDataListData()
 }
 
 // 页码变化
 const handlePageChange = (page: number) => {
   pagination.current = page
-  getDataList()
+  getDataListData()
 }
 
 // 获取情感标签类型
@@ -443,7 +495,7 @@ const formatDate = (dateStr: string) => {
 
 // 组件挂载时获取数据
 onMounted(() => {
-  getDataList()
+  getDataListData()
 })
 </script>
 

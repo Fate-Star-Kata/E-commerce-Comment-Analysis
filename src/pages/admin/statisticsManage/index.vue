@@ -206,6 +206,8 @@ import type {
   StatisticsData,
   StatisticsResponse
 } from '@/types/components/admin'
+import { getAnalysisStatistics } from '@/api/page_apis'
+import type { StatisticsResponse as ApiStatisticsResponse } from '@/types/apis/page_apis_T'
 
 // 响应式数据
 const loading = ref(false)
@@ -234,70 +236,52 @@ const statisticsData = reactive<StatisticsData>({
 const getStatisticsData = async () => {
   loading.value = true
   try {
-    // TODO: 替换为实际的API调用
-    const response: StatisticsResponse = {
-      code: 200,
-      data: {
-        total_comments: 12580,
-        active_users: 156,
-        accuracy_rate: 94.5,
-        storage_size: '2.3GB',
-        daily_analysis: [
-          { date: '2024-01-15', count: 120 },
-          { date: '2024-01-16', count: 135 },
-          { date: '2024-01-17', count: 98 },
-          { date: '2024-01-18', count: 156 },
-          { date: '2024-01-19', count: 142 },
-          { date: '2024-01-20', count: 178 },
-          { date: '2024-01-21', count: 165 }
-        ],
-        sentiment_distribution: {
-          positive: 6290,
-          negative: 3774,
-          neutral: 2516
+    const response: ApiStatisticsResponse = await getAnalysisStatistics()
+    
+    // 将API数据转换为页面所需格式
+    const transformedData: StatisticsData = {
+      total_comments: response.data.total_comments_analyzed,
+      active_users: 0, // API暂未提供此字段，使用默认值
+      accuracy_rate: 94.5, // API暂未提供此字段，使用默认值
+      storage_size: '0MB', // API暂未提供此字段，使用默认值
+      daily_analysis: [], // API暂未提供此字段，使用空数组
+      sentiment_distribution: {
+        positive: response.data.sentiment_distribution.positive,
+        negative: response.data.sentiment_distribution.negative,
+        neutral: response.data.sentiment_distribution.neutral
+      },
+      time_period_stats: [
+        {
+          period: '总计',
+          total_analysis: response.data.total_analyses,
+          positive_count: response.data.sentiment_distribution.positive,
+          negative_count: response.data.sentiment_distribution.negative,
+          neutral_count: response.data.sentiment_distribution.neutral,
+          avg_confidence: 0.94, // API暂未提供此字段，使用默认值
+          active_users: 0 // API暂未提供此字段，使用默认值
         },
-        time_period_stats: [
-          {
-            period: '今日',
-            total_analysis: 165,
-            positive_count: 82,
-            negative_count: 51,
-            neutral_count: 32,
-            avg_confidence: 0.945,
-            active_users: 23
-          },
-          {
-            period: '昨日',
-            total_analysis: 178,
-            positive_count: 89,
-            negative_count: 56,
-            neutral_count: 33,
-            avg_confidence: 0.938,
-            active_users: 28
-          },
-          {
-            period: '本周',
-            total_analysis: 1094,
-            positive_count: 547,
-            negative_count: 328,
-            neutral_count: 219,
-            avg_confidence: 0.942,
-            active_users: 89
-          },
-          {
-            period: '本月',
-            total_analysis: 4567,
-            positive_count: 2284,
-            negative_count: 1370,
-            neutral_count: 913,
-            avg_confidence: 0.941,
-            active_users: 156
-          }
-        ]
-      }
+        {
+          period: '单条分析',
+          total_analysis: response.data.single_analyses,
+          positive_count: 0, // API暂未提供详细分布，使用默认值
+          negative_count: 0,
+          neutral_count: 0,
+          avg_confidence: 0.94,
+          active_users: 0
+        },
+        {
+          period: '批量分析',
+          total_analysis: response.data.batch_analyses,
+          positive_count: 0, // API暂未提供详细分布，使用默认值
+          negative_count: 0,
+          neutral_count: 0,
+          avg_confidence: 0.94,
+          active_users: 0
+        }
+      ]
     }
 
-    Object.assign(statisticsData, response.data)
+    Object.assign(statisticsData, transformedData)
 
     // 更新图表
     await nextTick()
