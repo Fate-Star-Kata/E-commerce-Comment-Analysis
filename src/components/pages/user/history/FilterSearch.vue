@@ -74,7 +74,7 @@
           <label class="label">
             <span class="label-text">&nbsp;</span>
           </label>
-          <button class="btn btn-outline" @click="$emit('reset')">
+          <button class="btn btn-outline  mt-5" @click="$emit('reset')">
             重置筛选
           </button>
         </div>

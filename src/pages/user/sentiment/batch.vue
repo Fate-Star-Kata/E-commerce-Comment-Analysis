@@ -78,6 +78,8 @@ import type {
   BatchAnalysisResult,
   AnalysisProgress as BatchAnalysisProgress
 } from '@/types/components'
+import { analyzeBatchComments } from '@/api/page_apis'
+import type { BatchAnalysisResponse } from '@/api/page_apis'
 
 // 当前步骤
 const currentStep = ref(1)
@@ -115,7 +117,7 @@ const analysisLogs = ref<{ timestamp: Date; type: 'info' | 'success' | 'warning'
 const analysisResults = ref<BatchAnalysisResult[]>([])
 
 // 结果筛选
-const resultFilter = ref('all')
+const resultFilter = ref('')
 
 // 分页
 const currentPage = ref(1)
@@ -180,32 +182,73 @@ const startAnalysis = async () => {
   analysisLogs.value = []
   analysisResults.value = []
   
-  // 模拟分析过程
-  for (let i = 0; i < previewData.value.length; i++) {
-    await new Promise(resolve => setTimeout(resolve, 500)) // 模拟处理时间
+  try {
+    // 准备批量分析的数据
+    const formData = new FormData()
     
-    const item = previewData.value[i]
-    const sentiment = Math.random() > 0.6 ? 'positive' : Math.random() > 0.3 ? 'negative' : 'neutral'
-    const confidence = 0.7 + Math.random() * 0.3
+    // 创建CSV内容
+    const csvContent = [
+      'comment_text', // CSV头部
+      ...previewData.value.map(item => item.content)
+    ].join('\n')
     
-    const result: BatchAnalysisResult = {
-      comment: item.content,
-      productId: item.productId,
-      sentiment,
-      confidence
-    }
+    // 创建文件并添加到FormData
+    const csvBlob = new Blob([csvContent], { type: 'text/csv' })
+    const csvFile = new File([csvBlob], 'comments.csv', { type: 'text/csv' })
+    formData.append('file', csvFile, 'comments.csv')
     
-    analysisResults.value.push(result)
-    analysisStats.value[sentiment as keyof typeof analysisStats.value]++
-    analysisProgress.value.current = i + 1
-    analysisProgress.value.total = previewData.value.length
-    
-    const log = {
+    // 添加日志
+    analysisLogs.value.push({
       timestamp: new Date(),
-      message: `分析完成: ${result.comment.substring(0, 20)}...`,
-      type: 'info' as const
+      message: `开始批量分析 ${previewData.value.length} 条评论`,
+      type: 'info'
+    })
+    
+    // 调用API
+    const response = await analyzeBatchComments(csvFile, 'comment_text')
+    
+    if (response.code === 200 && response.data) {
+      const data: BatchAnalysisResponse = response.data
+      
+      // 更新统计信息
+      analysisStats.value = {
+        positive: data.statistics.positive_count,
+        negative: data.statistics.negative_count,
+        neutral: data.statistics.neutral_count
+      }
+      
+      // 转换预览结果为组件需要的格式
+      analysisResults.value = data.preview_results.map(result => ({
+        comment: result.comment_text,
+        productId: '', // API响应中没有productId，使用空字符串
+        sentiment: result.hzsystem_sentiment,
+        confidence: result.confidence
+      }))
+      
+      analysisProgress.value.current = data.preview_results.length
+      analysisProgress.value.total = data.preview_results.length
+      
+      // 添加成功日志
+      analysisLogs.value.push({
+        timestamp: new Date(),
+        message: `批量分析完成，共分析 ${data.preview_results.length} 条评论`,
+        type: 'success'
+      })
+    } else {
+      // 添加错误日志
+      analysisLogs.value.push({
+        timestamp: new Date(),
+        message: `分析失败: ${response}`,
+        type: 'error'
+      })
     }
-    analysisLogs.value.push(log)
+  } catch (error) {
+    console.error('批量分析失败:', error)
+    analysisLogs.value.push({
+      timestamp: new Date(),
+      message: `分析失败: ${error}`,
+      type: 'error'
+    })
   }
   
   // 分析完成后自动跳转到结果页
@@ -213,6 +256,7 @@ const startAnalysis = async () => {
     currentStep.value = 4
   }, 1000)
 }
+
 
 // 结果操作方法
 const downloadResults = (result?: BatchAnalysisResult) => {

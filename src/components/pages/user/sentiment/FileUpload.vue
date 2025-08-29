@@ -125,12 +125,6 @@ const props = defineProps<{
   columnMapping: ColumnMapping
 }>()
 
-defineEmits<{
-  'update:selectedFile': [file: File | null]
-  'update:columnMapping': [mapping: ColumnMapping]
-  'next': []
-}>()
-
 const emit = defineEmits<{
   'update:selectedFile': [file: File | null]
   'update:columnMapping': [mapping: ColumnMapping]

@@ -46,6 +46,8 @@ import CommentInput from '@/components/pages/user/sentiment/CommentInput.vue'
 import AnalysisResultComponent from '@/components/pages/user/sentiment/AnalysisResult.vue'
 import SessionHistory from '@/components/pages/user/sentiment/SessionHistory.vue'
 import type { AnalysisResult, HistoryItem } from '@/types/components'
+import { analyzeSingleComment } from '@/api/page_apis'
+import type { SingleAnalysisRequest, SingleAnalysisResponse } from '@/api/page_apis'
 
 // 响应式数据
 const commentText = ref('')
@@ -75,35 +77,36 @@ const analyzeComment = async () => {
   isAnalyzing.value = true
   
   try {
-    // 模拟API调用延迟
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // 模拟分析结果
-    const sentiment = Math.random() > 0.5 ? 'positive' : Math.random() > 0.5 ? 'negative' : 'neutral'
-    const confidence = 0.7 + Math.random() * 0.3
-    
-    const positive = Math.random()
-    const negative = Math.random()
-    const neutral = Math.random()
-    const total = positive + negative + neutral
-    
-    const mockResult: AnalysisResult = {
-      sentiment,
-      confidence,
-      timestamp: new Date().toISOString(),
-      scores: {
-        positive: positive / total,
-        negative: negative / total,
-        neutral: neutral / total
-      },
-      keywords: [
-        { word: '产品', sentiment: 'neutral', weight: 0.8 },
-        { word: '质量', sentiment: 'positive', weight: 0.9 },
-        { word: '价格', sentiment: 'negative', weight: 0.6 }
-      ]
+    const request: SingleAnalysisRequest = {
+      comment_text: commentText.value.trim()
     }
     
-    analysisResult.value = mockResult
+    const response = await analyzeSingleComment(request)
+    
+    if (response.code === 200 && response.data) {
+      const data: SingleAnalysisResponse = response.data
+      
+      // 转换API响应为组件需要的格式
+      const result: AnalysisResult = {
+        sentiment: data.hzsystem_sentiment,
+        confidence: data.confidence,
+        timestamp: new Date().toISOString(),
+        scores: {
+          positive: data.probabilities.positive,
+          negative: data.probabilities.negative,
+          neutral: 1 - data.probabilities.positive - data.probabilities.negative
+        },
+        keywords: data.keywords.map(keyword => ({
+          word: keyword,
+          sentiment: data.hzsystem_sentiment, // 使用整体情感作为关键词情感
+          weight: 0.8 // 默认权重
+        }))
+      }
+      
+      analysisResult.value = result
+    } else {
+      console.error('分析失败:')
+    }
   } catch (error) {
     console.error('分析失败:', error)
   } finally {

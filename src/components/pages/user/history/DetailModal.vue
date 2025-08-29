@@ -165,7 +165,7 @@ defineProps<{
   record: AnalysisRecord | null
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'close': []
   'download': [record: AnalysisRecord | null]
 }>()
@@ -176,11 +176,6 @@ const handleBackdropClick = (event: MouseEvent) => {
     emit('close')
   }
 }
-
-const emit = defineEmits<{
-  'close': []
-  'download': [record: AnalysisRecord | null]
-}>()
 
 // 获取情感标签
 const getSentimentLabel = (sentiment: string) => {

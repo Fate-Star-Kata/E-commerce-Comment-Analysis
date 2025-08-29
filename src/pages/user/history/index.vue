@@ -61,12 +61,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import StatsOverview from '@/components/pages/user/history/StatsOverview.vue'
 import FilterSearch from '@/components/pages/user/history/FilterSearch.vue'
 import RecordsTable from '@/components/pages/user/history/RecordsTable.vue'
 import DetailModal from '@/components/pages/user/history/DetailModal.vue'
 import Pagination from '@/components/pages/user/history/Pagination.vue'
-import type { HistoryStats, HistoryRecord } from '@/types/components'
+import type { HistoryStats } from '@/types/components'
+import type { HistoryRecord as ApiHistoryRecord } from '@/types/apis/page_apis_T'
+import { getAnalysisHistory, getAnalysisDetail, deleteAnalysisRecord } from '@/api/page_apis'
+import type { HistoryQueryParams, HistoryResponse, AnalysisDetailResponse, DeleteAnalysisRequest } from '@/api/page_apis'
 
 // AnalysisRecord接口定义（与DetailModal组件保持一致）
 interface AnalysisRecord {
@@ -93,12 +97,12 @@ const router = useRouter()
 
 // 响应式数据
 const searchQuery = ref('')
-const filterType = ref('')
-const filterSentiment = ref('')
+const filterType = ref<'' | 'single' | 'batch'>('')
+const filterSentiment = ref<'' | 'positive' | 'negative' | 'neutral'>('')
 const filterTime = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
-const selectedRecord = ref<HistoryRecord | null>(null)
+const selectedRecord = ref<AnalysisRecord | null>(null)
 
 // 统计数据
 const statistics = ref({
@@ -110,53 +114,9 @@ const statistics = ref({
 })
 
 // 分析记录数据
-const records = ref<HistoryRecord[]>([
-    {
-        id: '1',
-        type: 'single',
-        content: '这个产品质量很好，物流也很快，非常满意！',
-        sentiment: 'positive',
-        confidence: 0.92,
-        timestamp: new Date('2024-01-15 14:30:00'),
-        resultCount: 1
-    },
-    {
-        id: '2',
-        type: 'batch',
-        content: '批量分析了500条商品评论',
-        sentiment: 'positive',
-        confidence: 0.85,
-        timestamp: new Date('2024-01-14 10:15:00'),
-        resultCount: 500
-    },
-    {
-        id: '3',
-        type: 'single',
-        content: '产品质量太差了，完全不值这个价格，很失望。',
-        sentiment: 'negative',
-        confidence: 0.88,
-        timestamp: new Date('2024-01-13 16:45:00'),
-        resultCount: 1
-    },
-    {
-        id: '4',
-        type: 'batch',
-        content: '批量分析了200条用户反馈',
-        sentiment: 'neutral',
-        confidence: 0.72,
-        timestamp: new Date('2024-01-12 09:20:00'),
-        resultCount: 200
-    },
-    {
-        id: '5',
-        type: 'single',
-        content: '产品还可以，价格合理，符合预期。',
-        sentiment: 'neutral',
-        confidence: 0.75,
-        timestamp: new Date('2024-01-11 13:10:00'),
-        resultCount: 1
-    }
-])
+const records = ref<AnalysisRecord[]>([])
+const isLoading = ref(false)
+const totalRecords = ref(0)
 
 // 计算属性
 const filteredRecords = computed(() => {
@@ -213,12 +173,12 @@ const filteredRecords = computed(() => {
 const analysisRecords = computed(() => {
     return filteredRecords.value.map(record => ({
         id: record.id,
-        timestamp: record.timestamp.toISOString(),
+        timestamp: record.timestamp,
         type: record.type,
         content: record.content,
         sentiment: record.sentiment,
         confidence: record.confidence,
-        dataCount: record.resultCount || 1,
+        dataCount: record.dataCount || 1,
         result: record
     }))
 })
@@ -228,12 +188,12 @@ const selectedRecordForModal = computed(() => {
     if (!selectedRecord.value) return null
     return {
         id: selectedRecord.value.id,
-        timestamp: selectedRecord.value.timestamp.toISOString(),
+        timestamp: selectedRecord.value.timestamp,
         type: selectedRecord.value.type,
         content: selectedRecord.value.content,
         sentiment: selectedRecord.value.sentiment,
         confidence: selectedRecord.value.confidence,
-        dataCount: selectedRecord.value.resultCount || 1,
+        dataCount: selectedRecord.value.dataCount || 1,
         result: {
             fileName: undefined,
             fileSize: undefined,
@@ -284,11 +244,23 @@ const resetFilters = () => {
     filterSentiment.value = ''
     filterTime.value = ''
     currentPage.value = 1
+    loadHistoryRecords()
+}
+
+// 监听筛选条件变化
+const handleFilterChange = () => {
+  currentPage.value = 1
+  loadHistoryRecords()
+}
+
+// 监听页码变化
+const handlePageChange = () => {
+  loadHistoryRecords()
 }
 
 const viewRecord = (record: AnalysisRecord) => {
-    // 从AnalysisRecord中获取原始的HistoryRecord
-    selectedRecord.value = record.result as HistoryRecord
+    // 从AnalysisRecord中获取原始记录
+    selectedRecord.value = record
 }
 
 // 关闭详情模态框
@@ -305,7 +277,7 @@ const downloadRecordFromModal = (record: AnalysisRecord | null) => {
 
 const downloadRecord = (record: AnalysisRecord) => {
     // 从AnalysisRecord中获取原始的HistoryRecord
-    const originalRecord = record.result as HistoryRecord
+    const originalRecord = record
     
     // 模拟下载功能
     const data = {
@@ -315,7 +287,7 @@ const downloadRecord = (record: AnalysisRecord) => {
         sentiment: originalRecord.sentiment,
         confidence: originalRecord.confidence,
         timestamp: originalRecord.timestamp,
-        resultCount: originalRecord.resultCount
+        dataCount: originalRecord.dataCount
     }
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -331,13 +303,25 @@ const downloadRecord = (record: AnalysisRecord) => {
     closeDetailModal()
 }
 
-const deleteRecord = (id: string) => {
-    if (confirm('确定要删除这条记录吗？')) {
-        const index = records.value.findIndex(r => r.id === id)
-        if (index > -1) {
-            records.value.splice(index, 1)
-        }
+const deleteRecord = async (id: string) => {
+  if (confirm('确定要删除这条记录吗？')) {
+    try {
+      const request: DeleteAnalysisRequest = {
+        record_id: parseInt(id)
+      }
+      
+      const response = await deleteAnalysisRecord(request)
+      
+      if (response.code === 200) {
+        // 删除成功，重新加载数据
+        await loadHistoryRecords()
+      } else {
+        ElMessage.error('删除失败')
+      }
+    } catch (error) {
+      ElMessage.error('删除失败，请稍后重试')
     }
+  }
 }
 
 const exportRecords = () => {
@@ -347,7 +331,7 @@ const exportRecords = () => {
         内容: record.content,
         情感倾向: record.sentiment === 'positive' ? '正面' : record.sentiment === 'negative' ? '负面' : '中性',
         置信度: `${(record.confidence * 100).toFixed(1)}%`,
-        数据量: record.resultCount || 1
+        数据量: record.dataCount || 1
     }))
 
     const csv = [Object.keys(data[0]).join(',')]
@@ -372,9 +356,54 @@ const clearAllRecords = () => {
     }
 }
 
+// 加载历史记录数据
+const loadHistoryRecords = async () => {
+  isLoading.value = true
+  try {
+    const params: HistoryQueryParams = {
+      page: currentPage.value,
+      page_size: pageSize.value,
+      analysis_type: filterType.value || undefined,
+      sentiment: filterSentiment.value || undefined
+    }
+    
+    const response = await getAnalysisHistory(params)
+    
+    if (response.code === 200 && response.data) {
+      const data: HistoryResponse = response.data
+      
+      // 转换API响应为组件需要的格式
+      records.value = data.records.map(record => ({
+        id: record.id.toString(),
+        timestamp: record.created_at,
+        type: record.analysis_type,
+        content: record.analysis_type === 'single' ? record.comment_text || '' : `批量分析了${record.total_count}条评论`,
+        sentiment: record.sentiment || 'neutral',
+        confidence: record.confidence || 0,
+        dataCount: record.total_count
+      }))
+      
+      totalRecords.value = data.total
+      
+      // 更新统计数据
+      statistics.value = {
+        totalAnalyses: data.total,
+        monthlyAnalyses: data.total, // 这里可以根据需要计算月度数据
+        monthlyGrowth: 0, // 这里可以根据需要计算增长率
+        averageAccuracy: 0.85, // 这里可以根据需要计算平均准确率
+        lastActive: data.records.length > 0 ? new Date(data.records[0].created_at).toLocaleDateString() : ''
+      }
+    }
+  } catch (error) {
+    ElMessage.error('加载历史记录失败，请稍后重试')
+  } finally {
+    isLoading.value = false
+  }
+}
+
 // 生命周期
 onMounted(() => {
-    // 可以在这里加载真实的历史记录数据
+  loadHistoryRecords()
 })
 </script>
 

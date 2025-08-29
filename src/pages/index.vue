@@ -74,23 +74,57 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+import { getAnalysisStatistics } from '@/api/page_apis';
+import type { StatisticsResponse } from '@/api/page_apis';
 
 const footerText = import.meta.env.VITE_APP_FOOTER || "版权所有 © 2025 HZSYSTEM";
 
 // 统计数据
 const stats = ref([
-  { number: '1,234', label: '总分析次数' },
-  { number: '567', label: '今日分析' },
-  { number: '89%', label: '准确率' },
-  { number: '2.3s', label: '平均响应时间' }
+  { number: '0', label: '总分析次数' },
+  { number: '0', label: '单条分析' },
+  { number: '0', label: '批量分析' },
+  { number: '0', label: '评论总数' }
 ])
 
 // 趋势数据
 const trendData = ref({
-  positive: '456',
-  negative: '123',
-  neutral: '234'
+  positive: '0',
+  negative: '0',
+  neutral: '0'
+})
+
+// 加载统计数据
+const loadStatistics = async () => {
+  try {
+    const response = await getAnalysisStatistics()
+    if (response.code === 200 && response.data) {
+      const data: StatisticsResponse = response.data
+      
+      // 更新统计数据
+      stats.value = [
+        { number: data.total_analyses.toString(), label: '总分析次数' },
+        { number: data.single_analyses.toString(), label: '单条分析' },
+        { number: data.batch_analyses.toString(), label: '批量分析' },
+        { number: data.total_comments_analyzed.toString(), label: '评论总数' }
+      ]
+      
+      // 更新趋势数据
+      trendData.value = {
+        positive: data.sentiment_distribution.positive.toString(),
+        negative: data.sentiment_distribution.negative.toString(),
+        neutral: data.sentiment_distribution.neutral.toString()
+      }
+    }
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
+  }
+}
+
+// 页面加载时获取统计数据
+onMounted(() => {
+  loadStatistics()
 })
 
 // 功能特性数据
