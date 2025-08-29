@@ -37,7 +37,7 @@
                 </el-icon>
               </div>
               <div class="card-content">
-                <div class="card-title">成功率</div>
+                <div class="card-title">正面情感比例</div>
                 <div class="card-value">{{ stats.success_rate || 0 }}%</div>
               </div>
             </div>
@@ -50,8 +50,8 @@
                 </el-icon>
               </div>
               <div class="card-content">
-                <div class="card-title">存储占用</div>
-                <div class="card-value">{{ stats.storage_used || '0MB' }}</div>
+                <div class="card-title">评论总数</div>
+                <div class="card-value">{{ stats.storage_used || '0条评论' }}</div>
               </div>
             </div>
           </el-col>
@@ -68,8 +68,8 @@
             </div>
           </template>
           <el-form :model="searchForm" inline>
-            <el-form-item label="用户ID">
-              <el-input v-model="searchForm.user_id" placeholder="请输入用户ID" clearable style="width: 150px" />
+            <el-form-item label="用户名">
+              <el-input v-model="searchForm.username" placeholder="请输入用户名" clearable style="width: 150px" />
             </el-form-item>
             <el-form-item label="分析类型">
               <el-select v-model="searchForm.analysis_type" placeholder="请选择分析类型" clearable style="width: 150px">
@@ -77,11 +77,11 @@
                 <el-option label="单条分析" value="single" />
               </el-select>
             </el-form-item>
-            <el-form-item label="处理状态">
-              <el-select v-model="searchForm.status" placeholder="请选择处理状态" clearable style="width: 150px">
-                <el-option label="成功" value="success" />
-                <el-option label="失败" value="failed" />
-                <el-option label="处理中" value="processing" />
+            <el-form-item label="情感倾向">
+              <el-select v-model="searchForm.sentiment" placeholder="请选择情感倾向" clearable style="width: 150px">
+                <el-option label="正面" value="positive" />
+                <el-option label="负面" value="negative" />
+                <el-option label="中性" value="neutral" />
               </el-select>
             </el-form-item>
             <el-form-item label="时间范围">
@@ -114,23 +114,11 @@
             <div class="card-header">
               <span>历史记录</span>
               <div class="header-actions">
-                <el-button type="primary" size="small" @click="handleExport">
-                  <el-icon>
-                    <Download />
-                  </el-icon>
-                  导出记录
-                </el-button>
                 <el-button type="danger" size="small" @click="handleBatchDelete">
                   <el-icon>
                     <Delete />
                   </el-icon>
                   批量删除
-                </el-button>
-                <el-button type="warning" size="small" @click="handleCleanup">
-                  <el-icon>
-                    <Brush />
-                  </el-icon>
-                  清理记录
                 </el-button>
               </div>
             </div>
@@ -140,7 +128,7 @@
             style="width: 100%">
             <el-table-column type="selection" width="55" />
             <el-table-column prop="id" label="记录ID" width="100" />
-            <el-table-column prop="user_id" label="用户ID" width="100" />
+            <el-table-column prop="username" label="用户名" width="120" />
             <el-table-column prop="analysis_type" label="分析类型" width="120">
               <template #default="{ row }">
                 <el-tag :type="row.analysis_type === 'batch' ? 'primary' : 'success'" size="small">
@@ -148,17 +136,19 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="comment_count" label="评论数量" width="100" />
-            <el-table-column prop="processing_time" label="处理时长" width="120">
+            <el-table-column prop="total_count" label="评论数量" width="100" />
+            <el-table-column prop="sentiment" label="主要情感" width="100">
               <template #default="{ row }">
-                {{ formatProcessingTime(row.processing_time) }}
+                <el-tag v-if="row.sentiment" :type="getSentimentTagType(row.sentiment)" size="small">
+                  {{ getSentimentText(row.sentiment) }}
+                </el-tag>
+                <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="status" label="处理状态" width="100">
+            <el-table-column prop="confidence" label="置信度" width="100">
               <template #default="{ row }">
-                <el-tag :type="getStatusTagType(row.status)" size="small">
-                  {{ getStatusText(row.status) }}
-                </el-tag>
+                <span v-if="row.confidence !== null">{{ (row.confidence * 100).toFixed(1) }}%</span>
+                <span v-else>-</span>
               </template>
             </el-table-column>
             <el-table-column prop="file_name" label="文件名" min-width="200">
@@ -201,20 +191,22 @@
       <div v-if="currentRecord" class="detail-content">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="记录ID">{{ currentRecord.id }}</el-descriptions-item>
-          <el-descriptions-item label="用户ID">{{ currentRecord.user_id }}</el-descriptions-item>
+          <el-descriptions-item label="用户名">{{ currentRecord.username }}</el-descriptions-item>
           <el-descriptions-item label="分析类型">
             <el-tag :type="currentRecord.analysis_type === 'batch' ? 'primary' : 'success'">
               {{ currentRecord.analysis_type === 'batch' ? '批量分析' : '单条分析' }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="评论数量">{{ currentRecord.comment_count }}</el-descriptions-item>
-          <el-descriptions-item label="处理时长">
-            {{ formatProcessingTime(currentRecord.processing_time) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="处理状态">
-            <el-tag :type="getStatusTagType(currentRecord.status)">
-              {{ getStatusText(currentRecord.status) }}
+          <el-descriptions-item label="评论数量">{{ currentRecord.total_count }}</el-descriptions-item>
+          <el-descriptions-item label="主要情感">
+            <el-tag v-if="currentRecord.sentiment" :type="getSentimentTagType(currentRecord.sentiment)">
+              {{ getSentimentText(currentRecord.sentiment) }}
             </el-tag>
+            <span v-else>-</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="置信度">
+            <span v-if="currentRecord.confidence">{{ (currentRecord.confidence * 100).toFixed(1) }}%</span>
+            <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item label="文件名" :span="2">
             <span v-if="currentRecord.file_name">{{ currentRecord.file_name }}</span>
@@ -223,41 +215,24 @@
           <el-descriptions-item label="创建时间" :span="2">
             {{ formatDate(currentRecord.created_at) }}
           </el-descriptions-item>
-          <el-descriptions-item v-if="currentRecord.error_message" label="错误信息" :span="2">
-            <div class="error-message">{{ currentRecord.error_message }}</div>
+          <el-descriptions-item v-if="currentRecord.updated_at" label="更新时间" :span="2">
+            {{ formatDate(currentRecord.updated_at) }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="currentRecord.comment_text" label="评论内容" :span="2">
+            <div class="comment-text">{{ currentRecord.comment_text }}</div>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="currentRecord.keywords" label="关键词" :span="2">
+            <div class="keywords">
+              <el-tag v-for="keyword in currentRecord.keywords" :key="keyword" size="small"
+                style="margin-right: 8px;">{{
+                  keyword }}</el-tag>
+            </div>
           </el-descriptions-item>
         </el-descriptions>
       </div>
     </el-dialog>
 
-    <!-- 清理记录对话框 -->
-    <el-dialog v-model="cleanupDialogVisible" title="清理历史记录" width="500px">
-      <el-form :model="cleanupForm" label-width="120px">
-        <el-form-item label="清理规则">
-          <el-radio-group v-model="cleanupForm.type">
-            <el-radio label="days">按天数清理</el-radio>
-            <el-radio label="count">按数量清理</el-radio>
-            <el-radio label="status">按状态清理</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="cleanupForm.type === 'days'" label="保留天数">
-          <el-input-number v-model="cleanupForm.days" :min="1" :max="365" placeholder="请输入保留天数" />
-        </el-form-item>
-        <el-form-item v-if="cleanupForm.type === 'count'" label="保留数量">
-          <el-input-number v-model="cleanupForm.count" :min="1" :max="10000" placeholder="请输入保留数量" />
-        </el-form-item>
-        <el-form-item v-if="cleanupForm.type === 'status'" label="清理状态">
-          <el-select v-model="cleanupForm.status" placeholder="请选择要清理的状态">
-            <el-option label="失败记录" value="failed" />
-            <el-option label="成功记录" value="success" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="cleanupDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmCleanup">确认清理</el-button>
-      </template>
-    </el-dialog>
+
   </div>
 </template>
 
@@ -271,9 +246,7 @@ import {
   FolderOpened,
   Search,
   Refresh,
-  Download,
-  Delete,
-  Brush
+  Delete
 } from '@element-plus/icons-vue'
 import { Motion } from 'motion-v'
 import type {
@@ -290,7 +263,8 @@ import type {
   HistoryRecord as ApiHistoryRecord,
   HistoryQueryParams as ApiHistoryQueryParams,
   HistoryResponse as ApiHistoryResponse,
-  AnalysisDetailResponse as ApiAnalysisDetailResponse
+  AnalysisDetailResponse as ApiAnalysisDetailResponse,
+  AnalysisType
 } from '@/types/apis/page_apis_T'
 
 // 响应式数据
@@ -298,7 +272,6 @@ const loading = ref(false)
 const historyList = ref<HistoryRecord[]>([])
 const selectedRows = ref<HistoryRecord[]>([])
 const viewDialogVisible = ref(false)
-const cleanupDialogVisible = ref(false)
 const currentRecord = ref<HistoryRecord | null>(null)
 const dateRange = ref<[string, string] | null>(null)
 
@@ -307,25 +280,19 @@ const stats = reactive({
   total_records: 0,
   today_records: 0,
   success_rate: 0,
-  storage_used: '0MB'
+  storage_used: '0条评论'
 })
 
 // 搜索表单
 const searchForm = reactive<Omit<HistoryQueryParams, 'page' | 'page_size'>>({
-  user_id: undefined,
+  username: undefined,
   analysis_type: '',
-  status: '',
+  sentiment: '',
   start_date: '',
   end_date: ''
 })
 
-// 清理表单
-const cleanupForm = reactive({
-  type: 'days',
-  days: 30,
-  count: 1000,
-  status: ''
-})
+
 
 // 分页配置
 const pagination = reactive({
@@ -334,18 +301,71 @@ const pagination = reactive({
   total: 0
 })
 
+// 计算统计数据
+const calculateStats = async () => {
+  try {
+    // 获取所有记录用于统计（不分页）
+    const allRecordsParams: ApiHistoryQueryParams = {
+      page: 1,
+      page_size: 9999, // 获取所有记录
+      analysis_type: searchForm.analysis_type as AnalysisType,
+      // @ts-ignore
+      sentiment: searchForm.sentiment,
+      start_date: searchForm.start_date || undefined,
+      end_date: searchForm.end_date || undefined
+    }
+
+    if (dateRange.value) {
+      allRecordsParams.startTime = dateRange.value[0]
+      allRecordsParams.endTime = dateRange.value[1]
+    }
+
+    // @ts-ignore
+    const allRecordsResponse: ApiHistoryResponse = await getAnalysisHistory(allRecordsParams)
+    const allRecords = allRecordsResponse.data.records
+
+    // 计算总记录数
+    stats.total_records = allRecords.length
+
+    // 计算今日记录数
+    const today = new Date().toISOString().split('T')[0]
+    stats.today_records = allRecords.filter((record: { created_at: string }) =>
+      record.created_at.startsWith(today)
+    ).length
+
+    // 计算正面情感比例（替代成功率）
+    const positiveRecords = allRecords.filter((record: { sentiment: string }) => record.sentiment === 'positive')
+    stats.success_rate = allRecords.length > 0
+      ? Math.round((positiveRecords.length / allRecords.length) * 100)
+      : 0
+
+    // 计算总评论数量（替代存储占用）
+    const totalComments = allRecords.reduce((sum: number, record: { total_count: number }) => sum + (record.total_count || 0), 0)
+    stats.storage_used = `${totalComments}条评论`
+
+  } catch (error) {
+    console.error('计算统计数据失败:', error)
+    // 如果计算失败，保持默认值
+    stats.total_records = 0
+    stats.today_records = 0
+    stats.success_rate = 0
+    stats.storage_used = '0条评论'
+  }
+}
+
 // 获取历史记录列表
 const getHistoryList = async () => {
   loading.value = true
   try {
     const apiParams: ApiHistoryQueryParams = {
       page: pagination.current,
-      pageSize: pagination.pageSize,
-      keyword: searchForm.user_id || undefined,
-      type: searchForm.analysis_type || undefined,
-      status: searchForm.status || undefined,
-      startTime: searchForm.start_date || undefined,
-      endTime: searchForm.end_date || undefined
+      page_size: pagination.pageSize,
+      // @ts-ignore
+      analysis_type: searchForm.analysis_type || undefined,
+      // @ts-ignore
+      sentiment: searchForm.sentiment || undefined,
+      start_date: searchForm.start_date || undefined,
+      end_date: searchForm.end_date || undefined
     }
 
     if (dateRange.value) {
@@ -353,28 +373,33 @@ const getHistoryList = async () => {
       apiParams.endTime = dateRange.value[1]
     }
 
+    // @ts-ignore
     const response: ApiHistoryResponse = await getAnalysisHistory(apiParams)
-    
+
     // 将API数据转换为页面所需格式
     const transformedRecords: HistoryRecord[] = response.data.records.map((record: ApiHistoryRecord) => ({
       id: record.id,
-      user_id: record.user_id || '',
+      username: record.username || '',
       analysis_type: record.analysis_type,
-      comment_count: record.comment_count || 0,
-      processing_time: record.processing_time || 0,
-      status: record.status || 'success',
+      total_count: record.total_count || 0,
+      sentiment: record.sentiment,
+      confidence: record.confidence,
       file_name: record.file_name || '',
       created_at: record.created_at,
-      error_message: record.error_message
+      updated_at: record.updated_at,
+      positive_count: record.positive_count || 0,
+      negative_count: record.negative_count || 0,
+      neutral_count: record.neutral_count || 0,
+      comment_text: record.comment_text,
+      keywords: record.keywords,
+      details: record.details || []
     }))
 
     historyList.value = transformedRecords
     pagination.total = response.data.total
-    
-    // 更新统计数据
-    if (response.data.stats) {
-      Object.assign(stats, response.data.stats)
-    }
+
+    // 计算统计数据
+    await calculateStats()
   } catch (error) {
     ElMessage.error('获取历史记录失败')
     console.error('获取历史记录失败:', error)
@@ -392,9 +417,9 @@ const handleSearch = () => {
 // 重置
 const handleReset = () => {
   Object.assign(searchForm, {
-    user_id: undefined,
+    username: undefined,
     analysis_type: '',
-    status: '',
+    sentiment: '',
     start_date: '',
     end_date: ''
   })
@@ -406,9 +431,10 @@ const handleReset = () => {
 // 查看详情
 const handleView = async (row: HistoryRecord) => {
   try {
+    // @ts-ignore
     const response: ApiAnalysisDetailResponse = await getAnalysisDetail(row.id)
-    
-    // 将API数据转换为页面所需格式
+
+    // @ts-ignore 将API数据转换为页面所需格式
     currentRecord.value = {
       ...row,
       ...response.data
@@ -454,7 +480,7 @@ const handleDelete = async (row: HistoryRecord) => {
       }
     )
 
-    await deleteAnalysisRecord({ id: row.id })
+    await deleteAnalysisRecord({ record_id: row.id })
     ElMessage.success('删除成功')
     getHistoryList()
   } catch (error) {
@@ -483,55 +509,39 @@ const handleBatchDelete = async () => {
       }
     )
 
-    // TODO: 调用批量删除API
-    ElMessage.success('批量删除成功')
-    getHistoryList()
-  } catch (error) {
-    // 用户取消删除
-  }
-}
+    // 循环调用单个删除接口
+    let successCount = 0
+    let failCount = 0
 
-// 导出记录
-const handleExport = () => {
-  // TODO: 实现记录导出功能
-  ElMessage.info('导出功能开发中')
-}
-
-// 清理记录
-const handleCleanup = () => {
-  cleanupDialogVisible.value = true
-}
-
-// 确认清理
-const confirmCleanup = async () => {
-  try {
-    let message = ''
-    switch (cleanupForm.type) {
-      case 'days':
-        message = `确定要清理 ${cleanupForm.days} 天前的记录吗？`
-        break
-      case 'count':
-        message = `确定要只保留最新的 ${cleanupForm.count} 条记录吗？`
-        break
-      case 'status':
-        message = `确定要清理所有${cleanupForm.status === 'failed' ? '失败' : '成功'}的记录吗？`
-        break
+    for (const row of selectedRows.value) {
+      try {
+        await deleteAnalysisRecord({ record_id: row.id })
+        successCount++
+      } catch (error) {
+        console.error(`删除记录 ${row.id} 失败:`, error)
+        failCount++
+      }
     }
 
-    await ElMessageBox.confirm(message, '确认清理', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    if (failCount === 0) {
+      ElMessage.success(`批量删除成功，共删除 ${successCount} 条记录`)
+    } else if (successCount === 0) {
+      ElMessage.error(`批量删除失败，${failCount} 条记录删除失败`)
+    } else {
+      ElMessage.warning(`批量删除完成，成功 ${successCount} 条，失败 ${failCount} 条`)
+    }
 
-    // TODO: 调用清理API
-    ElMessage.success('清理完成')
-    cleanupDialogVisible.value = false
+    selectedRows.value = []
     getHistoryList()
   } catch (error) {
-    // 用户取消清理
+    if (error !== 'cancel') {
+      console.error('批量删除失败:', error)
+      ElMessage.error('批量删除失败')
+    }
   }
 }
+
+
 
 // 表格选择变化
 const handleSelectionChange = (selection: HistoryRecord[]) => {
@@ -551,46 +561,35 @@ const handlePageChange = (page: number) => {
   getHistoryList()
 }
 
-// 获取状态标签类型
-const getStatusTagType = (status: string) => {
-  switch (status) {
-    case 'success':
+// 获取情感标签类型
+const getSentimentTagType = (sentiment: string) => {
+  switch (sentiment) {
+    case 'positive':
       return 'success'
-    case 'failed':
+    case 'negative':
       return 'danger'
-    case 'processing':
+    case 'neutral':
       return 'warning'
     default:
       return 'info'
   }
 }
 
-// 获取状态文本
-const getStatusText = (status: string) => {
-  switch (status) {
-    case 'success':
-      return '成功'
-    case 'failed':
-      return '失败'
-    case 'processing':
-      return '处理中'
+// 获取情感文本
+const getSentimentText = (sentiment: string) => {
+  switch (sentiment) {
+    case 'positive':
+      return '正面'
+    case 'negative':
+      return '负面'
+    case 'neutral':
+      return '中性'
     default:
       return '未知'
   }
 }
 
-// 格式化处理时长
-const formatProcessingTime = (time: number) => {
-  if (time < 60) {
-    return `${time}秒`
-  } else if (time < 3600) {
-    return `${Math.floor(time / 60)}分${time % 60}秒`
-  } else {
-    const hours = Math.floor(time / 3600)
-    const minutes = Math.floor((time % 3600) / 60)
-    return `${hours}时${minutes}分`
-  }
-}
+
 
 // 格式化日期
 const formatDate = (dateStr: string) => {
@@ -712,15 +711,21 @@ onMounted(() => {
   padding: 20px 0;
 }
 
-.error-message {
-  color: #f56c6c;
-  background: #fef0f0;
+.comment-text {
+  max-height: 120px;
+  overflow-y: auto;
   padding: 8px 12px;
+  background: #f8f9fa;
   border-radius: 4px;
-  border-left: 4px solid #f56c6c;
-  font-family: monospace;
-  white-space: pre-wrap;
-  word-break: break-all;
+  border: 1px solid #e9ecef;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 :deep(.el-card__header) {

@@ -271,7 +271,6 @@ const processDailyAnalysisData = (recentAnalyses: RecentAnalysis[], timeRange: s
 const getStatisticsData = async () => {
   loading.value = true
   try {
-    // @ts-ignore
     const response: ApiStatisticsResponse = await getAnalysisStatistics()
 
     // 处理每日分析数据

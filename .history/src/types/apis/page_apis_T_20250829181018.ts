@@ -148,7 +148,6 @@ export interface RecentAnalysis {
 
 // 统计信息响应
 export interface StatisticsResponse {
-  data: any
   total_analyses: number
   single_analyses: number
   batch_analyses: number

@@ -116,23 +116,29 @@ export interface DataListResponse {
   message?: string
 }
 
-// 历史记录管理相关类型
+// 历史记录
 export interface HistoryRecord {
   id: number
-  user_id: number
+  username: string
   analysis_type: 'batch' | 'single'
-  comment_count: number
-  processing_time: number
-  status: 'success' | 'failed' | 'processing'
+  total_count: number
+  sentiment: 'positive' | 'negative' | 'neutral'
+  confidence: number
   created_at: string
+  updated_at: string
   file_name?: string
-  error_message?: string
+  positive_count: number
+  negative_count: number
+  neutral_count: number
+  comment_text?: string
+  keywords?: string[]
+  details: any[]
 }
 
 export interface HistoryQueryParams {
-  user_id?: number
+  username?: string
   analysis_type?: string
-  status?: string
+  sentiment?: string
   start_date?: string
   end_date?: string
   page: number

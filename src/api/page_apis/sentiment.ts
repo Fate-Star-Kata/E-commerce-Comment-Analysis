@@ -4,7 +4,9 @@ import type {
   SingleAnalysisApiResponse,
   BatchAnalysisApiResponse,
   DeleteAnalysisRequest,
-  DeleteAnalysisApiResponse
+  DeleteAnalysisApiResponse,
+  BatchDeleteAnalysisRequest,
+  BatchDeleteAnalysisApiResponse
 } from '@/types/apis/page_apis_T'
 
 /**
@@ -51,6 +53,19 @@ export function analyzeBatchComments(file: File, commentColumn?: string): Promis
 export function deleteAnalysisRecord(data: DeleteAnalysisRequest): Promise<DeleteAnalysisApiResponse> {
   return serviceAxios({
     url: '/sentiment/delete/',
+    method: 'post',
+    data,
+  })
+}
+
+/**
+ * 批量删除分析记录
+ * @param data 包含记录ID数组的数据
+ * @returns 删除结果
+ */
+export function batchDeleteAnalysisRecord(data: BatchDeleteAnalysisRequest): Promise<BatchDeleteAnalysisApiResponse> {
+  return serviceAxios({
+    url: '/sentiment/batch-delete/',
     method: 'post',
     data,
   })
