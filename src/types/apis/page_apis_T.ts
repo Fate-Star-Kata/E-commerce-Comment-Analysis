@@ -84,6 +84,7 @@ export interface DeleteAnalysisRequest {
 export interface HistoryQueryParams {
   page?: number
   page_size?: number
+  query?: string
   analysis_type?: AnalysisType | ''
   sentiment?: SentimentType | ''
   start_date?: string
