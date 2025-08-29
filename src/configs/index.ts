@@ -32,10 +32,34 @@ try {
 export const defaultMenuItems: MenuItem[] = [
   {
     id: 'index',
-    label: 'menu.index',
+    label: '首页',
     href: '/',
     icon: null,
     hide: false,
+  },
+  {
+    id: 'sentiment-analysis',
+    label: '情感分析',
+    href: '/user/sentiment',
+    icon: null,
+    children: [
+      {
+        id: 'batch-analysis',
+        label: '批量分析',
+        href: '/user/sentiment/batch'
+      },
+      {
+        id: 'single-analysis',
+        label: '单条分析',
+        href: '/user/sentiment/single'
+      }
+    ]
+  },
+  {
+    id: 'history',
+    label: '历史记录',
+    href: '/user/history',
+    icon: null,
   },
   {
     id: 'knowledge',
@@ -47,6 +71,7 @@ export const defaultMenuItems: MenuItem[] = [
     id: 'templates',
     label: 'menu.templates',
     href: '/templates',
+    hide: true,
     children: [
       {
         id: 'dashboard',
@@ -76,13 +101,6 @@ export const defaultMenuItems: MenuItem[] = [
     ]
   },
   {
-    id: 'system_film',
-    label: 'menu.system_film',
-    href: '/user/system_film',
-    hide: true,
-    icon: null,
-  },
-  {
     id: 'admin',
     label: 'menu.admin',
     href: '/admin',
@@ -97,6 +115,32 @@ export const adminMenuItems: AdminHeader[] = [
     title: "仪表板",
     icon: "Odometer",
     path: "/admin/dashboard",
+  },
+  {
+    id: "1-1",
+    title: "情感分析管理",
+    icon: "ChatDotRound",
+    path: "/admin/sentiment",
+    children: [
+      {
+        id: "1-1-1",
+        title: "分析统计",
+        icon: "DataAnalysis",
+        path: "/admin/sentiment/stats",
+      },
+      {
+        id: "1-1-2",
+        title: "模型管理",
+        icon: "Setting",
+        path: "/admin/sentiment/models",
+      },
+      {
+        id: "1-1-3",
+        title: "分析记录",
+        icon: "Document",
+        path: "/admin/sentiment/records",
+      }
+    ]
   },
   {
     id: "2",

@@ -1,134 +1,127 @@
 <template>
-  <div class="h-[90vh] bg-base-100 text-base-content flex flex-col overflow-hidden">
+  <div class="min-h-screen bg-gray-50">
     <!-- 主要内容区域 -->
-    <div class="flex-1 flex flex-col justify-center items-center px-4">
+    <div class="container mx-auto px-4 py-8">
       <!-- 标题区域 -->
-      <div class="text-center space-y-6 mb-8">
-        <RevealMotion :delay="0">
-          <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight">
-            赫兹系统
-          </h1>
-        </RevealMotion>
-
-        <RevealMotion :delay="0.1">
-          <p class="text-lg md:text-xl opacity-70">
-            项目介绍
-          </p>
-        </RevealMotion>
-
-        <RevealMotion :delay="0.2">
-          <div class="flex items-center justify-center gap-3 pt-2">
-            <a class="btn btn-primary rounded-full px-6">立即使用</a>
-            <a class="btn btn-outline rounded-full px-6">了解更多</a>
-          </div>
-        </RevealMotion>
+      <div class="text-center space-y-6 mb-12">
+        <h1 class="text-4xl md:text-5xl font-semibold text-gray-800">
+          电商评论情感分析系统
+        </h1>
+        <p class="text-lg md:text-xl text-gray-600">
+          智能分析电商评论情感倾向，助力商家洞察用户心声
+        </p>
       </div>
 
-      <!-- 功能亮点：紧凑布局 -->
-      <div class="max-w-4xl w-full">
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <RevealMotion v-for="(f, i) in features" :key="i" :delay="i * 0.08">
-            <div class="card bg-base-200 shadow-sm hover:shadow-md transition rounded-xl">
-              <div class="card-body p-4">
-                <h3 class="card-title text-sm">{{ f.title }}</h3>
-                <p class="opacity-70 text-xs">{{ f.desc }}</p>
-              </div>
+      <!-- 统计概览 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div v-for="(stat, i) in stats" :key="i" class="bg-white border border-gray-200 rounded-lg p-6 text-center">
+          <div class="text-3xl font-semibold text-gray-800 mb-2">{{ stat.number }}</div>
+          <div class="text-sm text-gray-600">{{ stat.label }}</div>
+        </div>
+      </div>
+
+      <!-- 快速开始 -->
+      <div class="bg-white border border-gray-200 rounded-lg p-8 mb-12">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6">快速开始</h2>
+        <p class="mb-6 text-gray-600">选择您需要的分析方式：</p>
+        <div class="flex flex-wrap gap-4">
+          <router-link to="/user/sentiment/batch" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            批量数据分析
+          </router-link>
+          <router-link to="/user/sentiment/single" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+            单条评论分析
+          </router-link>
+          <router-link to="/user/history" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+            查看历史记录
+          </router-link>
+        </div>
+      </div>
+
+      <!-- 最近分析趋势 -->
+      <div class="bg-white border border-gray-200 rounded-lg p-8 mb-12">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6">最近分析趋势</h2>
+        <p class="mb-6 text-gray-600">过去7天的情感分析统计：</p>
+        <div class="bg-gray-50 p-6 rounded-lg">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="text-center">
+              <div class="text-3xl font-semibold text-green-600">{{ trendData.positive }}</div>
+              <div class="text-sm text-gray-600">正面评论</div>
             </div>
-          </RevealMotion>
+            <div class="text-center">
+              <div class="text-3xl font-semibold text-red-600">{{ trendData.negative }}</div>
+              <div class="text-sm text-gray-600">负面评论</div>
+            </div>
+            <div class="text-center">
+              <div class="text-3xl font-semibold text-yellow-600">{{ trendData.neutral }}</div>
+              <div class="text-sm text-gray-600">中性评论</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 功能特性 -->
+      <div class="max-w-6xl mx-auto">
+        <h2 class="text-3xl font-semibold text-center text-gray-800 mb-8">系统特性</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div v-for="(feature, i) in features" :key="i" class="bg-white border border-gray-200 rounded-lg p-6 hover:border-gray-300 transition-colors">
+             <h3 class="text-lg font-semibold text-gray-800 mb-3">{{ feature.title }}</h3>
+             <p class="text-gray-600 text-sm">{{ feature.desc }}</p>
+           </div>
         </div>
       </div>
     </div>
-
-    <!-- 页脚 -->
-    <footer class="border-t border-base-200 py-4 text-center text-sm opacity-70">
-      {{ footerText }}
-    </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-/**
- * 动画说明：
- * - 使用你指定的 motion-v：import { Motion } from 'motion-v'
- * - RevealMotion 组件内部用 IntersectionObserver 监听进入视口
- * - 初始：opacity 0 + y 16；进入：opacity 1 + y 0
- */
-import { h, defineComponent, onMounted, onBeforeUnmount, ref, computed } from "vue";
-import { Motion } from "motion-v";
+import { ref } from "vue";
 
 const footerText = import.meta.env.VITE_APP_FOOTER || "版权所有 © 2025 HZSYSTEM";
 
-type RevealProps = { delay?: number };
-const RevealMotion = defineComponent<RevealProps>({
-  name: "RevealMotion",
-  props: { delay: { type: Number, default: 0 } },
-  setup(props, { slots }) {
-    const el = ref<HTMLElement | null>(null);
-    const inView = ref(false);
-    let io: IntersectionObserver | null = null;
+// 统计数据
+const stats = ref([
+  { number: '1,234', label: '总分析次数' },
+  { number: '567', label: '今日分析' },
+  { number: '89%', label: '准确率' },
+  { number: '2.3s', label: '平均响应时间' }
+])
 
-    // 使用 computed 来确保响应式更新
-    const animateProps = computed(() => {
-      return inView.value
-        ? { opacity: 1, y: 0, transition: { duration: 0.6, delay: props.delay } }
-        : { opacity: 0, y: 16 };
-    });
+// 趋势数据
+const trendData = ref({
+  positive: '456',
+  negative: '123',
+  neutral: '234'
+})
 
-    onMounted(() => {
-      io = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((e) => {
-            if (e.isIntersecting) {
-              inView.value = true;
-              // 只动画一次，注释掉下一行可反复触发
-              io?.unobserve(e.target);
-            }
-          });
-        },
-        { threshold: 0.15 }
-      );
-      if (el.value) io.observe(el.value);
-    });
-
-    onBeforeUnmount(() => io?.disconnect());
-
-    return () =>
-      h(
-        "div",
-        {
-          ref: el,
-        },
-        [
-          h(
-            // Motion 组件：用 initial + animate
-            Motion as any,
-            {
-              initial: { opacity: 0, y: 16 },
-              animate: animateProps.value,
-            },
-            slots
-          )
-        ]
-      );
-  },
-});
-
-// 文案内容：保持中性，便于替换
+// 功能特性数据
 const features = [
-  { title: "极简设计", desc: "去除干扰，聚焦信息与层次。" },
-  { title: "响应布局", desc: "桌面/移动端一致的体验。" },
-  { title: "即插即用", desc: "替换文字与链接即可上线。" },
-  { title: "轻量动画", desc: "只在需要处出现的动效。" },
-  { title: "DaisyUI 组件", desc: "开箱即用的优雅样式。" },
-  { title: "Tailwind 原子化", desc: "一致、可维护的样式体系。" },
+  { 
+    title: 'AI智能分析', 
+    desc: '基于深度学习的情感分析模型，准确识别评论情感倾向' 
+  },
+  { 
+    title: '批量处理', 
+    desc: '支持Excel、CSV等格式的批量数据导入和分析' 
+  },
+  { 
+    title: '实时分析', 
+    desc: '毫秒级响应，实时获取单条评论的情感分析结果' 
+  },
+  { 
+    title: '可视化报告', 
+    desc: '丰富的图表展示，直观呈现情感分析统计结果' 
+  },
+  { 
+    title: '数据安全', 
+    desc: '企业级数据加密存储，保障用户数据隐私安全' 
+  },
+  { 
+    title: '精准识别', 
+    desc: '多维度情感标签，细粒度识别用户情感表达' 
+  }
 ];
 </script>
 
 <style scoped>
-/* 禁用滚动 */
-html,
-body {
-  overflow: hidden;
-}
-
+/* 首页样式 */
 </style>

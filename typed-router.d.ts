@@ -43,6 +43,9 @@ declare module 'vue-router/auto-routes' {
     '/user/history/': RouteRecordInfo<'/user/history/', '/user/history', Record<never, never>, Record<never, never>>,
     '/user/knowledge/': RouteRecordInfo<'/user/knowledge/', '/user/knowledge', Record<never, never>, Record<never, never>>,
     '/user/notifications/': RouteRecordInfo<'/user/notifications/', '/user/notifications', Record<never, never>, Record<never, never>>,
+    '/user/sentiment/': RouteRecordInfo<'/user/sentiment/', '/user/sentiment', Record<never, never>, Record<never, never>>,
+    '/user/sentiment/batch': RouteRecordInfo<'/user/sentiment/batch', '/user/sentiment/batch', Record<never, never>, Record<never, never>>,
+    '/user/sentiment/single': RouteRecordInfo<'/user/sentiment/single', '/user/sentiment/single', Record<never, never>, Record<never, never>>,
     '/user/system_film/': RouteRecordInfo<'/user/system_film/', '/user/system_film', Record<never, never>, Record<never, never>>,
     '/userInfo/': RouteRecordInfo<'/userInfo/', '/userInfo', Record<never, never>, Record<never, never>>,
   }
@@ -156,6 +159,18 @@ declare module 'vue-router/auto-routes' {
     }
     'src/pages/user/notifications/index.vue': {
       routes: '/user/notifications/'
+      views: never
+    }
+    'src/pages/user/sentiment/index.vue': {
+      routes: '/user/sentiment/'
+      views: never
+    }
+    'src/pages/user/sentiment/batch.vue': {
+      routes: '/user/sentiment/batch'
+      views: never
+    }
+    'src/pages/user/sentiment/single.vue': {
+      routes: '/user/sentiment/single'
       views: never
     }
     'src/pages/user/system_film/index.vue': {
